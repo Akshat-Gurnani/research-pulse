@@ -120,7 +120,7 @@ async function claim(w: BriefWindow): Promise<boolean> {
   await db().from("brief_runs").upsert({ week_key: w.weekKey, window_start: w.startSlot.toISOString(), window_end: w.endSlot.toISOString(), window_label: w.label }, { onConflict: "week_key", ignoreDuplicates: true });
   const nowIso = new Date().toISOString();
   const lease = new Date(Date.now() + LEASE_MIN * 60_000).toISOString();
-  const { data } = await db().from("brief_runs").update({ status: "running", lease_expires: lease, started_at: nowIso })
+  const { data } = await db().from("brief_runs").update({ status: "running", lease_expires: lease, started_at: nowIso, window_label: w.label })
     .eq("week_key", w.weekKey).or(`status.in.(pending,waiting_batch,failed),and(status.eq.running,lease_expires.lt.${nowIso})`).select("week_key");
   return !!data?.length;
 }

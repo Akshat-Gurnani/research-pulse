@@ -91,7 +91,8 @@ export function briefWindow(now: Date): BriefWindow {
   const endSlot = zonedToUtc(sy, sm, sd, 20, 0, ET);
   const startSlot = zonedToUtc(sy, sm, sd - 7, 20, 0, ET);
   const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-  const first = new Date(startSlot.getTime() + 4 * 3600000); // Tue 00:00Z-ish, first batch of the window
+  // startSlot is the previous Sunday-evening batch (exclusive). The first batch inside the window is Monday 20:00 ET.
+  const first = zonedToUtc(sy, sm, sd - 6, 20, 0, ET);
   const label = `Papers announced ${fmt(first)} to ${fmt(endSlot)} ${endSlot.getUTCFullYear()}`;
   return { weekKey: weekKey(new Date(monUtc.getTime() + 3600000)), startSlot, endSlot, label };
 }

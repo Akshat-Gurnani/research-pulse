@@ -36,3 +36,15 @@ describe("briefWindow", () => {
   it("same window from a Tuesday catch-up", () => expect(briefWindow(new Date("2026-10-13T02:30:00Z")).endSlot.toISOString()).toBe("2026-10-12T00:00:00.000Z"));
   it("zonedToUtc round-trips ET", () => expect(zonedToUtc(2026, 10, 11, 20, 0, ET).toISOString()).toBe("2026-10-12T00:00:00.000Z"));
 });
+
+describe("briefWindow label", () => {
+  it("W42 starts at the first announcement inside the window (Tue 6 Oct 00:00Z), not the exclusive start slot", () => {
+    const w = briefWindow(new Date("2026-10-12T00:20:00Z"));
+    expect(w.label).toBe("Papers announced 6 Oct to 12 Oct 2026");
+  });
+  it("is correct across the US daylight-saving change (window ending Sun 1 Nov 20:00 EST)", () => {
+    const w = briefWindow(new Date("2026-11-02T03:00:00Z"));
+    expect(w.endSlot.toISOString()).toBe("2026-11-02T01:00:00.000Z");
+    expect(w.label).toBe("Papers announced 27 Oct to 2 Nov 2026");
+  });
+});
