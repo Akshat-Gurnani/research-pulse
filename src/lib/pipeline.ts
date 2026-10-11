@@ -38,12 +38,12 @@ async function health(source: string, ok: boolean, err?: string, total?: number)
 // --------------------------------------------------------------------------------------------
 // DAILY: ingest with overlap, signals, keep-alive. Safe to run any number of times.
 // --------------------------------------------------------------------------------------------
-export async function ingestDaily(now = new Date()) {
+export async function ingestDaily(now = new Date(), days = 5) {
   const domains = await activeDomains();
   const cats = [...new Set(domains.flatMap((d) => d.arxiv_categories))];
   const out = { fetched: 0, upserted: 0, flagged: 0, suspicious: false, error: undefined as string | undefined };
   try {
-    const r = await fetchRecent(cats, now, 5);
+    const r = await fetchRecent(cats, now, days);
     out.fetched = r.papers.length;
     const baseline = (await db().from("source_health").select("baseline_median").eq("source", "arxiv").maybeSingle()).data?.baseline_median ?? null;
     out.suspicious = isSuspicious(r.total, baseline, false);
