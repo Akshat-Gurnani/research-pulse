@@ -1,0 +1,12 @@
+{
+  "week_key": "seed",
+  "label": "Offline snapshot (placeholder: run `npm run make-seed` to replace with real, dated papers)",
+  "generated_at": "2026-01-01T00:00:00.000Z",
+  "ladder_level": 3,
+  "partial": true,
+  "domains": [],
+  "word_count": 0,
+  "reading_minutes": 1,
+  "models": [],
+  "notes": ["Placeholder seed. Replace with a real brief before submission (see docs/BUILD_PLAN.md, phase 0)."]
+}

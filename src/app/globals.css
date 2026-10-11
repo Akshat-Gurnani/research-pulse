@@ -1,0 +1,18 @@
+:root{--paper:#f4eee1;--ink:#1d2a26;--soft:#4a5851;--teal:#2d6e70;--moss:#7b9160;--ochre:#c48a2a;--earth:#7a5c3e;--rule:#d9d0bb}
+@media (prefers-color-scheme:dark){:root{--paper:#14201c;--ink:#ece6d6;--soft:#a9b4ad;--teal:#6fb3b5;--moss:#9db37f;--ochre:#e0a94a;--earth:#b99468;--rule:#2b3b35}}
+*{box-sizing:border-box}html{background:var(--paper)}
+body{margin:0;color:var(--ink);font:17px/1.6 Georgia,"Iowan Old Style",serif;background:var(--paper)}
+a{color:var(--teal)}main{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+h1{font-weight:400;font-style:italic;font-size:clamp(40px,8vw,64px);line-height:1;margin:0 0 6px}
+h2{font-size:20px;margin:44px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--rule);font-weight:600}
+.meta{color:var(--soft);font:13px/1.5 ui-monospace,Menlo,monospace}
+.banner{border-left:3px solid var(--ochre);background:color-mix(in srgb,var(--ochre) 14%,transparent);padding:10px 14px;margin:18px 0;font:14px/1.5 system-ui,sans-serif}
+.card{margin:22px 0}.card h3{font-size:18px;margin:0 0 4px}.tag{font:11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--earth);border:1px solid var(--rule);border-radius:99px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+.card p{margin:6px 0}.lbl{font:12px ui-monospace,monospace;color:var(--soft);text-transform:uppercase;letter-spacing:.05em}
+nav{display:flex;gap:16px;font:14px system-ui,sans-serif;margin-bottom:28px}
+.quiet{color:var(--soft);font-style:italic}
+table{width:100%;border-collapse:collapse;font:13px/1.4 ui-monospace,monospace}td,th{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:left;vertical-align:top}
+.ok{color:var(--moss)}.warn{color:var(--ochre)}.bad{color:#b4533a}
+input,textarea,button{font:15px system-ui,sans-serif;padding:8px 10px;border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:6px}
+button{cursor:pointer;background:var(--teal);color:#fff;border-color:var(--teal)}label{display:block;margin:10px 0 4px;font:13px system-ui,sans-serif;color:var(--soft)}
+.dom{border:1px solid var(--rule);border-radius:10px;padding:14px;margin:14px 0}.row{display:grid;gap:10px;grid-template-columns:1fr}@media(min-width:640px){.row{grid-template-columns:1fr 1fr}}
