@@ -10,12 +10,18 @@ import { ScoreBatch, SummaryBatch, SCORE_PROMPT_VERSION, SUMMARY_PROMPT_VERSION 
 import { gateCard, cardWords, wordCount, readingMinutes, type CardIn } from "./validate";
 import { scan, makeCanary } from "./inject";
 import { hfDaily, hnFor } from "./signals";
-import { rank, fitBudget, keywordScore, type Cand, type Fit } from "./select";
+import { rank, fitBudget, preselect, type Cand, type Fit } from "./select";
 import { arxivUrl, type Brief, type BriefCard, type BriefDomain, type DomainRow } from "./types";
 import { renderEmail, sendWithFailover } from "./mail";
 
 const LEASE_MIN = 8;
+const SCORE_CONCURRENCY = 3; // modest: free-tier RPM is unpublished; the call budget is still enforced per call
 const TIME_BUDGET_MS = 240_000;
+/** Run fn over items with at most n in flight. Never rejects: callers handle their own errors. */
+async function runPool<T>(items: T[], n: number, fn: (x: T) => Promise<void>): Promise<void> {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
+}
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const hash = (s: string) => { let h = 5381; for (const c of s) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0; return h.toString(36); };
 
@@ -144,18 +150,8 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
     const prevFeatured = new Set(((await db().from("featured").select("arxiv_id,first_week_key")).data ?? []).filter((f: any) => f.first_week_key !== w.weekKey).map((f: any) => f.arxiv_id));
     const pool = papers.filter((p) => !prevFeatured.has(p.arxiv_id) && (p.latest_version === 1 || new Date(p.published).getTime() > w.startSlot.getTime() - 14 * 86400000));
 
-    // 1) cheap local pre-filter: category + phrase match per domain; cap total sent to Gemini
-    const pre = pool.map((p) => {
-      let best = 0;
-      for (const d of domains) {
-        if (!d.arxiv_categories.some((c) => p.categories.includes(c))) continue;
-        const text = `${p.title} ${p.abstract}`;
-        if (d.exclude_phrases.some((x) => text.toLowerCase().includes(x.toLowerCase()))) continue;
-        const k = keywordScore(text, d.phrases) + (d.arxiv_categories.includes(p.primary_category) ? 1 : 0);
-        if (d.phrases.length === 0 || keywordScore(text, d.phrases) > 0) best = Math.max(best, k);
-      }
-      return { p, k: best };
-    }).filter((x) => x.k > 0 && !x.p.injection_flag).sort((a, b) => b.k - a.k).slice(0, 120).map((x) => x.p);
+    // 1) cheap local pre-filter: per-domain quotas (see preselect); at most 120 papers go to Gemini
+    const pre = preselect(pool, domains, 120);
 
     // 2) score once per paper (cached by prompt version + domain list hash)
     const promptVer = `${SCORE_PROMPT_VERSION}:${hash(domains.map((d) => d.slug + d.name).join("|"))}`;
@@ -164,8 +160,10 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
     const models = new Set<string>();
     let degraded = false;
     const canary = makeCanary();
-    for (const part of chunk(toScore, 10)) {
-      if (overBudget()) { await release(w.weekKey, { status: "pending", error_summary: "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
+    let timedOut = false, budgetGone = false;
+    await runPool(chunk(toScore, 10), SCORE_CONCURRENCY, async (part) => {
+      if (budgetGone) return;
+      if (overBudget()) { timedOut = true; return; }
       try {
         const { system, user } = scoringPrompt(domains, part.map((p) => ({ id: p.arxiv_id, title: p.title, abstract: p.abstract })), canary);
         const r = await callJson({ purpose: "score", system, user, schema: ScoreBatch, budget });
@@ -173,8 +171,9 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
         const ids = new Set(part.map((p) => p.arxiv_id));
         const rows = r.data.results.filter((x) => ids.has(x.id)).map((x) => ({ arxiv_id: x.id, prompt_version: promptVer, model_id: r.model, model_version: r.modelVersion, merit: x.merit, best_domain: x.best_domain, evidence_quote: x.evidence_quote }));
         if (rows.length) { await db().from("paper_scores").upsert(rows); rows.forEach((x) => cached.set(x.arxiv_id, x)); }
-      } catch (e) { degraded = true; if (e instanceof BudgetExceeded) break; }
-    }
+      } catch (e) { degraded = true; if (e instanceof BudgetExceeded) budgetGone = true; }
+    });
+    if (timedOut) { await release(w.weekKey, { status: "pending", error_summary: "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
 
     // 3) per-domain selection, signals only for the shortlist
     const bySlug = new Map(domains.map((d) => [d.slug, d]));

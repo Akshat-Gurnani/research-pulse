@@ -32,3 +32,37 @@ describe("fitBudget", () => {
   });
   it("never exceeds the budget", () => expect(fitBudget([f(1, 500, 1), f(2, 500, 2)], 400).kept.length).toBe(0));
 });
+
+import { preselect, type PrePaper, type PreDomain } from "@/lib/select";
+describe("preselect (per-domain quotas)", () => {
+  const paper = (id: string, text: string, cats = ["cs.AI"], extra: Partial<PrePaper> = {}): PrePaper => ({ arxiv_id: id, title: text, abstract: text, categories: cats, primary_category: cats[0], ...extra });
+  const agents: PreDomain = { arxiv_categories: ["cs.AI"], phrases: ["agent", "planning", "tool use"], exclude_phrases: [] };
+  const cv: PreDomain = { arxiv_categories: ["cs.CV"], phrases: ["defect detection", "industrial"], exclude_phrases: [] };
+
+  it("a broad domain cannot starve a narrow one (the live code-llms/cv-industrial bug)", () => {
+    const many = Array.from({ length: 300 }, (_, i) => paper(`a${String(i).padStart(4, "0")}`, "agent planning tool use agent planning"));
+    const few = Array.from({ length: 6 }, (_, i) => paper(`c${i}`, "industrial defect detection", ["cs.CV"]));
+    const out = preselect([...many, ...few], [agents, cv], 40);
+    expect(out).toHaveLength(40);
+    expect(out.filter((p) => p.arxiv_id.startsWith("c"))).toHaveLength(6);
+  });
+  it("refills spare capacity from the broad domain and never exceeds the total", () => {
+    const many = Array.from({ length: 100 }, (_, i) => paper(`a${String(i).padStart(3, "0")}`, "agent"));
+    const out = preselect([...many, paper("c0", "industrial", ["cs.CV"])], [agents, cv], 30);
+    expect(out).toHaveLength(30);
+    expect(out.some((p) => p.arxiv_id === "c0")).toBe(true);
+  });
+  it("applies categories, exclude phrases and injection flags; ignores papers matching nothing", () => {
+    const d: PreDomain = { arxiv_categories: ["cs.AI"], phrases: ["agent"], exclude_phrases: ["quantum"] };
+    const out = preselect([
+      paper("ok", "an agent"), paper("wrongcat", "an agent", ["cs.CV"]), paper("excluded", "a quantum agent"),
+      paper("flagged", "an agent", ["cs.AI"], { injection_flag: true }), paper("nomatch", "something else"),
+    ], [d], 10);
+    expect(out.map((p) => p.arxiv_id)).toEqual(["ok"]);
+  });
+  it("is deterministic and handles no domains", () => {
+    const ps = Array.from({ length: 50 }, (_, i) => paper(`p${i}`, "agent"));
+    expect(preselect(ps, [agents], 10).map((p) => p.arxiv_id)).toEqual(preselect([...ps].reverse(), [agents], 10).map((p) => p.arxiv_id));
+    expect(preselect(ps, [], 10)).toEqual([]);
+  });
+});

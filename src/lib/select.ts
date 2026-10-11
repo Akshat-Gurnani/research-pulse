@@ -61,3 +61,35 @@ export function keywordScore(text: string, phrases: string[]): number {
   const t = text.toLowerCase();
   return phrases.reduce((n, p) => n + (t.includes(p.toLowerCase()) ? 1 : 0), 0);
 }
+
+export interface PreDomain { arxiv_categories: string[]; phrases: string[]; exclude_phrases: string[] }
+export interface PrePaper { arxiv_id: string; title: string; abstract: string; categories: string[]; primary_category: string | null; injection_flag?: boolean }
+
+/**
+ * Cheap local pre-filter before any Gemini call: category overlap plus phrase match, per domain.
+ * Each domain gets its own quota so a broad domain (hundreds of matches) cannot starve a narrow one.
+ * Spare capacity left by narrow domains is refilled with the best remaining candidates. Deterministic.
+ */
+export function preselect<P extends PrePaper>(papers: P[], domains: PreDomain[], total = 120): P[] {
+  if (domains.length === 0) return [];
+  const quota = Math.max(5, Math.floor(total / domains.length));
+  const k = (p: P, d: PreDomain): number => {
+    if (p.injection_flag) return 0;
+    if (!d.arxiv_categories.some((c) => p.categories.includes(c))) return 0;
+    const text = `${p.title} ${p.abstract}`;
+    const low = text.toLowerCase();
+    if (d.exclude_phrases.some((x) => low.includes(x.toLowerCase()))) return 0;
+    const kw = keywordScore(text, d.phrases);
+    if (d.phrases.length > 0 && kw === 0) return 0;
+    return kw + (p.primary_category && d.arxiv_categories.includes(p.primary_category) ? 1 : 0);
+  };
+  const byDomain = domains.map((d) => papers.map((p) => ({ p, s: k(p, d) })).filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || (a.p.arxiv_id < b.p.arxiv_id ? -1 : 1)));
+  const chosen = new Map<string, P>();
+  for (const list of byDomain) for (const x of list.slice(0, quota)) if (chosen.size < total) chosen.set(x.p.arxiv_id, x.p);
+  if (chosen.size < total) {
+    const rest = byDomain.flat().filter((x) => !chosen.has(x.p.arxiv_id)).sort((a, b) => b.s - a.s || (a.p.arxiv_id < b.p.arxiv_id ? -1 : 1));
+    for (const x of rest) { if (chosen.size >= total) break; chosen.set(x.p.arxiv_id, x.p); }
+  }
+  return [...chosen.values()];
+}
