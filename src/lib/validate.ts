@@ -51,7 +51,9 @@ export function gateCard(card: CardIn, abstract: string, canary: string, knownId
   return { card: { ...card, claims, why_it_matters: why, caveat: cav, verified: true }, issues };
 }
 
+/** Words a reader also sees per card: authors line, evidence tag, action tag, section labels. Measured on the live W42 page (1970 visible vs 1750 counted over 18 cards). */
+export const CARD_CHROME_WORDS = 16;
 export const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
 export const readingMinutes = (words: number) => Math.max(1, Math.ceil(words / WPM));
 export const cardWords = (c: { claims: { claim: string }[]; why_it_matters: string; caveat: string }, title: string) =>
-  wordCount(title) + c.claims.reduce((n, x) => n + wordCount(x.claim), 0) + wordCount(c.why_it_matters) + wordCount(c.caveat) + 6;
+  wordCount(title) + c.claims.reduce((n, x) => n + wordCount(x.claim), 0) + wordCount(c.why_it_matters) + wordCount(c.caveat) + CARD_CHROME_WORDS;

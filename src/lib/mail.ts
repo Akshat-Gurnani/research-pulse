@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { opt } from "./config";
 import type { Brief } from "./types";
+import { tidyClaim } from "./format";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -16,8 +17,8 @@ export function renderEmail(b: Brief, baseUrl: string, stale: boolean) {
     html += `<h2 style="font-size:17px;border-bottom:1px solid #ddd">${esc(d.name)}</h2>`;
     if (!d.items.length) { txt.push(d.note ?? "Nothing cleared the bar this week."); html += `<p><i>${esc(d.note ?? "Nothing cleared the bar this week.")}</i></p>`; }
     for (const c of d.items) {
-      txt.push(`- ${c.title} [${c.action}]`, `  ${c.claims.map((x) => x.claim).join(" ")}`, `  Why: ${c.why_it_matters}`, `  Caveat: ${c.caveat}`, `  ${c.url}`);
-      html += `<p><b><a href="${c.url}">${esc(c.title)}</a></b> <span style="color:#7a5c3e">[${esc(c.action)}]</span><br>${esc(c.claims.map((x) => x.claim).join(" "))}<br><i>Why:</i> ${esc(c.why_it_matters)}<br><i>Caveat:</i> ${esc(c.caveat)}</p>`;
+      txt.push(`- ${c.title} [${c.action}]`, ...c.claims.map((x) => `  - ${tidyClaim(x.claim)}`), `  Why: ${c.why_it_matters}`, `  Caveat: ${c.caveat}`, `  ${c.url}`);
+      html += `<p><b><a href="${c.url}">${esc(c.title)}</a></b> <span style="color:#7a5c3e">[${esc(c.action)}]</span><br>${c.claims.map((x) => `&bull; ${esc(tidyClaim(x.claim))}`).join("<br>")}<br><i>Why:</i> ${esc(c.why_it_matters)}<br><i>Caveat:</i> ${esc(c.caveat)}</p>`;
     }
     txt.push("");
   }

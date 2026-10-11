@@ -1,4 +1,5 @@
 import type { Brief } from "@/lib/types";
+import { tidyClaim } from "@/lib/format";
 
 export function BriefView({ brief, stale, rung }: { brief: Brief; stale: boolean; rung: string }) {
   const seed = rung === "seed";
@@ -17,7 +18,7 @@ export function BriefView({ brief, stale, rung }: { brief: Brief; stale: boolean
           <article className="card" key={c.arxiv_id}>
             <h3><a href={c.url} rel="noopener noreferrer">{c.title}</a><span className="tag">{c.action.replace(/_/g, " ")}</span></h3>
             <p className="meta">{c.authors.join(", ")} · {c.evidence_type.replace(/_/g, " ")} · abstract-only{c.carried_over ? " · carried over" : ""}</p>
-            <p>{c.claims.map((x) => x.claim).join(" ")}</p>
+            <ul className="claims">{c.claims.map((x, i) => <li key={i}>{tidyClaim(x.claim)}</li>)}</ul>
             <p><span className="lbl">Why it matters</span><br />{c.why_it_matters}</p>
             <p><span className="lbl">Caveat</span><br />{c.caveat}</p>
           </article>

@@ -8,7 +8,7 @@ h2{font-size:20px;margin:44px 0 6px;padding-bottom:6px;border-bottom:1px solid v
 .meta{color:var(--soft);font:13px/1.5 ui-monospace,Menlo,monospace}
 .banner{border-left:3px solid var(--ochre);background:color-mix(in srgb,var(--ochre) 14%,transparent);padding:10px 14px;margin:18px 0;font:14px/1.5 system-ui,sans-serif}
 .card{margin:22px 0}.card h3{font-size:18px;margin:0 0 4px}.tag{font:11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--earth);border:1px solid var(--rule);border-radius:99px;padding:1px 8px;margin-left:6px;vertical-align:2px}
-.card p{margin:6px 0}.lbl{font:12px ui-monospace,monospace;color:var(--soft);text-transform:uppercase;letter-spacing:.05em}
+.card p{margin:6px 0}.claims{margin:6px 0;padding-left:1.15em}.claims li{margin:3px 0}.lbl{font:12px ui-monospace,monospace;color:var(--soft);text-transform:uppercase;letter-spacing:.05em}
 nav{display:flex;gap:16px;font:14px system-ui,sans-serif;margin-bottom:28px}
 .quiet{color:var(--soft);font-style:italic}
 table{width:100%;border-collapse:collapse;font:13px/1.4 ui-monospace,monospace}td,th{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
