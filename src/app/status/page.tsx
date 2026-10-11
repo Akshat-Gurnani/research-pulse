@@ -18,16 +18,16 @@ export default async function Status() {
     <p className="meta">Week now: {weekKey(new Date())} · last successful run: <span className={cls}>{last ? `${last.week_key} (${new Date(last.published_at).toUTCString().slice(5, 22)} UTC)` : "none yet"}</span> · last daily heartbeat: {hb ? new Date(hb.at).toUTCString().slice(5, 22) + " UTC" : "none"}</p>
     {err && <div className="banner">Database unreachable ({err}). The public brief is being served from the snapshot or seed.</div>}
     <h2>Brief runs</h2>
-    <table><thead><tr><th>Week</th><th>Status</th><th>Ladder</th><th>Calls</th><th>Min</th><th>Note</th></tr></thead><tbody>
+    <div className="scroll"><table><thead><tr><th>Week</th><th>Status</th><th>Ladder</th><th>Calls</th><th>Min</th><th>Note</th></tr></thead><tbody>
       {runs.map((r) => <tr key={r.week_key}><td>{r.week_key}</td><td>{r.status}</td><td>{r.ladder_level}{r.partial ? " (partial)" : ""}</td><td>{r.calls_used}</td><td>{r.reading_minutes ?? ""}</td><td>{r.error_summary ?? r.window_label ?? ""}</td></tr>)}
-    </tbody></table>
+    </tbody></table></div>
     <h2>Last 20 triggers (proof of which alarm arrived)</h2>
-    <table><thead><tr><th>When (UTC)</th><th>Source</th><th>Route</th><th>Result</th></tr></thead><tbody>
+    <div className="scroll"><table><thead><tr><th>When (UTC)</th><th>Source</th><th>Route</th><th>Result</th></tr></thead><tbody>
       {trig.map((t, i) => <tr key={i}><td>{new Date(t.received_at).toUTCString().slice(5, 25)}</td><td>{t.source}</td><td>{t.route}</td><td className={t.accepted ? "ok" : "bad"}>{t.accepted ? "accepted" : t.reject_reason}</td></tr>)}
-    </tbody></table>
+    </tbody></table></div>
     <h2>Sources</h2>
-    <table><thead><tr><th>Source</th><th>Last ok</th><th>Failures</th><th>Last error</th></tr></thead><tbody>
+    <div className="scroll"><table><thead><tr><th>Source</th><th>Last ok</th><th>Failures</th><th>Last error</th></tr></thead><tbody>
       {health.map((h) => <tr key={h.source}><td>{h.source}</td><td>{h.last_ok_at ? new Date(h.last_ok_at).toUTCString().slice(5, 22) : "never"}</td><td className={h.consecutive_failures ? "warn" : "ok"}>{h.consecutive_failures}</td><td>{h.last_error_class ?? ""}</td></tr>)}
-    </tbody></table>
+    </tbody></table></div>
   </>);
 }
