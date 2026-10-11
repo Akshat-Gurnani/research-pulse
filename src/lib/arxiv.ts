@@ -85,27 +85,28 @@ async function getFeed(url: string, attempts = 3): Promise<string> {
   throw err instanceof Error ? err : new ArxivError("timeout", String(err));
 }
 
-export interface FetchResult { papers: Paper[]; total: number; pages: number; suspiciousEmpty: boolean }
+export interface FetchResult { papers: Paper[]; total: number; pages: number; suspiciousEmpty: boolean; truncated: boolean }
 
 /**
  * Fetch every paper in the given categories submitted in the last `days` days.
  * One serialised stream of requests; pages of 200; stops when `start` passes `total`
  * (arXiv returns a fake Error entry for out-of-range start, which parseFeed rejects).
  */
-export async function fetchRecent(categories: string[], now: Date, days = 5, maxPages = 12): Promise<FetchResult> {
+export async function fetchRecent(categories: string[], now: Date, days = 5, maxPages = 30): Promise<FetchResult> {
   const cats = categories.map((c) => `cat:${c}`).join("+OR+");
   const q = `(${cats})+AND+submittedDate:${encodeURIComponent(submittedRange(now, days))}`;
   const out = new Map<string, Paper>();
-  let total = 0, pages = 0;
+  let total = 0, pages = 0, complete = false;
   for (let start = 0; pages < maxPages; start += 200) {
     const url = `${API}?search_query=${q}&start=${start}&max_results=200&sortBy=submittedDate&sortOrder=descending`;
     const xml = await getFeed(url);
     const r = parseFeed(xml);
     total = r.total; pages++;
     for (const p of r.papers) out.set(p.arxiv_id, p);
-    if (start + 200 >= total || r.papers.length === 0) break;
+    if (start + 200 >= total || r.papers.length === 0) { complete = true; break; }
   }
-  return { papers: [...out.values()], total, pages, suspiciousEmpty: total === 0 };
+  // Newest-first paging: hitting the page cap drops the OLDEST papers, so say so instead of failing silently.
+  return { papers: [...out.values()], total, pages, suspiciousEmpty: total === 0, truncated: !complete && total > 0 };
 }
 
 /** Suspicious-empty rule: zero (or far below baseline) outside an expected-quiet period is a source fault, not a quiet week. */

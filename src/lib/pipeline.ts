@@ -41,13 +41,15 @@ async function health(source: string, ok: boolean, err?: string, total?: number)
 export async function ingestDaily(now = new Date(), days = 5) {
   const domains = await activeDomains();
   const cats = [...new Set(domains.flatMap((d) => d.arxiv_categories))];
-  const out = { fetched: 0, upserted: 0, flagged: 0, suspicious: false, error: undefined as string | undefined };
+  const out = { fetched: 0, upserted: 0, flagged: 0, suspicious: false, truncated: false, total: 0, error: undefined as string | undefined };
   try {
     const r = await fetchRecent(cats, now, days);
     out.fetched = r.papers.length;
+    out.total = r.total;
+    out.truncated = r.truncated;
     const baseline = (await db().from("source_health").select("baseline_median").eq("source", "arxiv").maybeSingle()).data?.baseline_median ?? null;
     out.suspicious = isSuspicious(r.total, baseline, false);
-    await db().from("raw_fetch").insert({ source: "arxiv", n_items: r.total, valid: !out.suspicious, reject_reason: out.suspicious ? "suspicious-empty" : null, http_status: 200 });
+    await db().from("raw_fetch").insert({ source: "arxiv", n_items: r.total, valid: !out.suspicious, reject_reason: out.suspicious ? "suspicious-empty" : r.truncated ? "truncated-at-page-cap" : null, http_status: 200 });
     if (!out.suspicious) {
       const rows = r.papers.map((p) => {
         const s = scan(`${p.title}\n${p.abstract}\n${p.comment ?? ""}`);

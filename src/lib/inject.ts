@@ -16,11 +16,11 @@ const PATTERNS: [RegExp, string][] = [
   [/(you are|act as|pretend to be) (now )?(a |an )?(reviewer|judge|assistant|system)/i, "role-reassignment"],
   [/(give|assign|rate|score) (this|the) paper (a )?(high|top|positive|10|5)/i, "score-steering"],
   [/(do not|don't) (mention|include|flag) (any )?(weakness|limitation|negative)/i, "suppress-criticism"],
-  [/\b(system|assistant|developer)\s*:/i, "fake-role-tag"],
+  [/(^|[.!?]\s+)(system|assistant|developer)\s*:\s/i, "fake-role-tag"], // sentence-initial only: "a multi-agent system: ..." is ordinary prose
   [/<\/?(system|instructions?|prompt)>/i, "fake-tag"],
   [/(include|insert|add|output) (the )?(following )?(url|link)/i, "link-request"],
   [/\bas an ai (language )?model\b/i, "ai-address"],
-  [/(for|to) (llm|language model|ai) (reviewers?|readers?|judges?)/i, "addresses-llm"],
+  [/\b(note|attention|message|instructions?|hello|hi)\s+(to|for)\s+(the\s+)?(llm|language model|ai)\s*(reviewers?|readers?|judges?|agents?)\b/i, "addresses-llm"], // not "LLM judges" as a topic
 ];
 
 export interface ScanResult { flagged: boolean; reasons: string[]; clean: string }
@@ -29,7 +29,8 @@ export function scan(text: string): ScanResult {
   const clean = normalise(text);
   const reasons = new Set<string>();
   for (const [re, why] of PATTERNS) if (re.test(clean)) reasons.add(why);
-  if (/https?:\/\//i.test(clean) && /(click|visit|open) /i.test(clean)) reasons.add("call-to-action-link");
+  // A link plus an imperative aimed at the reader. Plain "open" is not enough: "open-source code at https://..." is normal.
+  if (/https?:\/\//i.test(clean) && /\b(click|visit)\s+(here|the (link|url|website|site|page)|this (link|url|site|page)|our (website|site|page))\b|\bopen (the|this) (link|url)\b/i.test(clean)) reasons.add("call-to-action-link");
   return { flagged: reasons.size > 0, reasons: [...reasons], clean };
 }
 
