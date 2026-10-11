@@ -76,6 +76,26 @@ export async function ingestDaily(now = new Date(), days = 5) {
 // --------------------------------------------------------------------------------------------
 // WEEKLY: assemble, summarise, validate, publish, deliver. Idempotent and resumable.
 // --------------------------------------------------------------------------------------------
+/**
+ * Every paper announced inside the window, read in keyset pages. A whole window with abstracts is several MB
+ * (6.5 MB for 3337 papers on 2026-10-11), and one response that large was terminated by the HTTP driver.
+ */
+export async function windowPapers(w: Pick<BriefWindow, "startSlot" | "endSlot">, pageSize = 500): Promise<any[]> {
+  const out: any[] = [];
+  let after = "";
+  for (;;) {
+    const page = must(
+      await db().from("papers").select("*")
+        .gt("announce_slot", w.startSlot.toISOString()).lte("announce_slot", w.endSlot.toISOString())
+        .gt("arxiv_id", after).order("arxiv_id").limit(pageSize),
+      "papers",
+    ) as any[];
+    out.push(...page);
+    if (page.length < pageSize) return out;
+    after = page[page.length - 1].arxiv_id;
+  }
+}
+
 export interface WeeklyResult { weekKey: string; status: string; note?: string; calls?: number }
 
 function makeBudget(weekKey: string): Budget {
@@ -120,7 +140,7 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
     if (missingBatch && !late && !opts.dryRun) { await release(w.weekKey, { status: "waiting_batch" }); return { weekKey: w.weekKey, status: "waiting_batch" }; }
 
     const domains = await activeDomains();
-    const papers = must(await db().from("papers").select("*").gt("announce_slot", w.startSlot.toISOString()).lte("announce_slot", w.endSlot.toISOString()), "papers") as any[];
+    const papers = await windowPapers(w);
     const prevFeatured = new Set(((await db().from("featured").select("arxiv_id,first_week_key")).data ?? []).filter((f: any) => f.first_week_key !== w.weekKey).map((f: any) => f.arxiv_id));
     const pool = papers.filter((p) => !prevFeatured.has(p.arxiv_id) && (p.latest_version === 1 || new Date(p.published).getTime() > w.startSlot.getTime() - 14 * 86400000));
 
