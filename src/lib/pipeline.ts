@@ -126,7 +126,7 @@ async function claim(w: BriefWindow): Promise<boolean> {
 }
 const release = (k: string, patch: Record<string, unknown>) => db().from("brief_runs").update({ lease_expires: null, ...patch }).eq("week_key", k);
 
-export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; ingestFirst?: boolean } = {}): Promise<WeeklyResult> {
+export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; ingestFirst?: boolean; force?: boolean } = {}): Promise<WeeklyResult> {
   const w = briefWindow(now);
   const t0 = Date.now();
   const overBudget = () => Date.now() - t0 > TIME_BUDGET_MS;
@@ -141,7 +141,9 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
 
     // Probe-and-wait: is the Sunday-evening batch visible yet? After 90 minutes we publish regardless and say so.
     const { count: sundayCount } = await db().from("papers").select("arxiv_id", { count: "exact", head: true }).eq("announce_slot", w.endSlot.toISOString());
-    const late = now.getTime() - w.endSlot.getTime() > 90 * 60_000;
+    // force: publish now without waiting for the Sunday batch. It is still labelled late_batch, and it is reversible
+    // (reset brief_runs.status to 'pending' and run again once the batch is visible; scores and summaries are cached).
+    const late = !!opts.force || now.getTime() - w.endSlot.getTime() > 90 * 60_000;
     const missingBatch = (sundayCount ?? 0) === 0;
     if (missingBatch && !late && !opts.dryRun) { await release(w.weekKey, { status: "waiting_batch" }); return { weekKey: w.weekKey, status: "waiting_batch" }; }
 

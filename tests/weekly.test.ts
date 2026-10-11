@@ -134,6 +134,38 @@ describe("Sunday batch missing", () => {
   });
 });
 
+describe("force", () => {
+  it("publishes immediately without the Sunday batch, labels it, and sends nothing when delivery is not called", async () => {
+    setVisible(EARLY);
+    const { runWeekly } = await import("../src/lib/pipeline");
+    const r = await runWeekly(MONDAY_EARLY, { force: true });
+    expect(r.status).toBe("published");
+    const run0 = (await rows("brief_runs"))[0];
+    expect(run0).toMatchObject({ status: "published", late_batch: true });
+    expect(run0.snapshot.notes.join(" ")).toMatch(/Sunday-evening arXiv batch was not visible/);
+    expect(h.send).not.toHaveBeenCalled();
+    expect(await rows("send_log")).toHaveLength(0);
+  });
+  it("is reversible: reset the week to pending and the complete brief replaces it, reusing cached model output", async () => {
+    setVisible(EARLY);
+    const { runWeekly } = await import("../src/lib/pipeline");
+    await runWeekly(MONDAY_EARLY, { force: true });
+    const callsAfterFirst = h.gen.mock.calls.length;
+    await h.db.from("brief_runs").update({ status: "pending", snapshot: null }).eq("week_key", WEEK);
+    setVisible([...EARLY, ...SUNDAY]);
+    vi.setSystemTime(new Date("2026-10-12T00:50:00Z"));
+    const r = await runWeekly(new Date("2026-10-12T00:50:00Z"));
+    expect(r.status).toBe("published");
+    const run0 = (await rows("brief_runs"))[0];
+    expect(run0.late_batch).toBe(false);
+    const ids = (await rows("brief_items")).map((i) => i.arxiv_id);
+    expect(ids).toHaveLength(5); // per-domain cap; 6 equal-merit papers
+    expect(ids.some((id) => SUNDAY.some((p) => p.id === id))).toBe(true); // the late batch is now included
+    // only the Sunday papers needed new model calls; the first four were cached
+    expect(h.gen.mock.calls.length - callsAfterFirst).toBeLessThanOrEqual(3);
+  });
+});
+
 describe("Duplicate triggers", () => {
   it("two concurrent weekly calls produce one brief and one send_log row", async () => {
     setVisible([...EARLY, ...SUNDAY]);

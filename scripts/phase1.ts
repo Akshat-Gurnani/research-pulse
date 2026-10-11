@@ -2,6 +2,7 @@
 //   npx tsx --env-file=.env.local scripts/phase1.ts daily [days]   ingest arXiv (default 5 days; use 8 for the first backfill)
 //   npx tsx --env-file=.env.local scripts/phase1.ts weekly-dry     score + summarise + gate, print result, publish nothing
 //   npx tsx --env-file=.env.local scripts/phase1.ts weekly         real run: claim lease, publish, (try to) email
+//   npx tsx --env-file=.env.local scripts/phase1.ts weekly-force   publish now without the Sunday batch (labelled, no email)
 //   npx tsx --env-file=.env.local scripts/phase1.ts counts         table counts and recent llm_calls
 import { db, must } from "../src/lib/db";
 import { ingestDaily, runWeekly, deliver } from "../src/lib/pipeline";
@@ -41,12 +42,16 @@ async function main() {
   } else if (cmd === "weekly-dry") {
     const r = await runWeekly(new Date(), { dryRun: true, ingestFirst: false });
     console.log("runWeekly(dryRun):", r, `${Math.round((Date.now() - t0) / 1000)} s`);
+  } else if (cmd === "weekly-force") {
+    // Publish now even though the Sunday batch is not visible yet. Labelled late_batch. Does NOT send email.
+    const r = await runWeekly(new Date(), { force: true });
+    console.log("runWeekly(force):", r, `${Math.round((Date.now() - t0) / 1000)} s`);
   } else if (cmd === "weekly") {
     const r = await runWeekly(new Date());
     console.log("runWeekly:", r, `${Math.round((Date.now() - t0) / 1000)} s`);
     if (r.status === "published" || r.status === "already-published") console.log("deliver:", await deliver(new Date()));
   } else if (cmd !== "counts") {
-    console.error("usage: phase1.ts daily [days] | weekly-dry | weekly | counts"); process.exit(2);
+    console.error("usage: phase1.ts daily [days] | weekly-dry | weekly | weekly-force | counts"); process.exit(2);
   }
   await counts();
 }
