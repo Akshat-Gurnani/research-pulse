@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
-    "@supabase/supabase-js": "^2.117.3",
+    "@neondatabase/serverless": "^1.2.0",
     "@vercel/blob": "^2.8.1",
     "fast-xml-parser": "^5.11.2",
     "next": "^16.4.0",
@@ -23,6 +23,7 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",

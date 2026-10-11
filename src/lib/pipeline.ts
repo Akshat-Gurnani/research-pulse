@@ -66,7 +66,7 @@ export async function ingestDaily(now = new Date()) {
     out.error = String(e.message ?? e);
     await health("arxiv", false, out.error);
   }
-  // keep-alive: a real read and a tiny write every day so Supabase Free never sees a quiet week
+  // keep-alive: a real read and a tiny write every day so a free-tier database never sees a quiet week and gets suspended
   await db().from("heartbeats").upsert({ name: "daily", at: new Date().toISOString() });
   return out;
 }

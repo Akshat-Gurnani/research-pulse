@@ -12,7 +12,8 @@ All AI steps use Gemini Flash. No other model provider is used.
 ## Run it
 ```bash
 npm install && cp .env.example .env.local   # fill in keys
-# run supabase/migrations/0001_init.sql in your Supabase project
+# create a Neon project, set DATABASE_URL, then apply the schema:
+#   psql "$DATABASE_URL" -f db/migrations/0001_init.sql
 npm run dev
 npm test
 ```

@@ -1,5 +1,5 @@
--- Research Pulse schema. RLS is ON for every table with NO policies: the publishable key reaches nothing.
--- All reads and writes go through the server using the secret (service_role) key.
+-- Research Pulse schema (plain Postgres; developed against Neon). RLS is ON for every table with NO policies,
+-- so any non-owner role reaches nothing. All reads and writes go through the server via DATABASE_URL.
 
 create table domains (
   id bigint generated always as identity primary key,
