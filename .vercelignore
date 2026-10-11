@@ -1,0 +1,11 @@
+tests/
+scripts/
+docs/
+db/
+.github/
+.claude/
+vitest.config.ts
+CLAUDE.md
+README.md
+.env*
+!.env.example

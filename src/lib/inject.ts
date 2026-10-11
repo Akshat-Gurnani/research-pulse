@@ -1,12 +1,12 @@
 // Prompt-injection hygiene for attacker-controlled text (titles, abstracts, comments, HN titles).
 // A defence stack, not a guarantee: no tools for the model, datamarking, scan-and-flag, plain-text output.
 
-const ZERO_WIDTH = /[​-‏⁠⁦-⁩﻿]/g;
-const HOMOGLYPH: Record<string, string> = { "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x", "і": "i", "ѕ": "s" };
+const ZERO_WIDTH = /[\u200B-\u200F\u2060\u2066-\u2069\uFEFF]/g;
+const HOMOGLYPH: Record<string, string> = { "\u0430": "a", "\u0435": "e", "\u043E": "o", "\u0440": "p", "\u0441": "c", "\u0445": "x", "\u0456": "i", "\u0455": "s" }; // Cyrillic lookalikes
 
 export function normalise(s: string): string {
   let t = s.normalize("NFKC").replace(ZERO_WIDTH, "");
-  t = t.replace(/[аеорсхіѕ]/g, (c) => HOMOGLYPH[c] ?? c);
+  t = t.replace(/[\u0430\u0435\u043E\u0440\u0441\u0445\u0456\u0455]/g, (c) => HOMOGLYPH[c] ?? c);
   return t.replace(/\s+/g, " ").trim();
 }
 
@@ -38,11 +38,11 @@ export function scan(text: string): ScanResult {
 export function makeDelimiter(): string {
   const b = new Uint8Array(6);
   crypto.getRandomValues(b);
-  return "§" + [...b].map((x) => x.toString(16).padStart(2, "0")).join("") + "§";
+  return "\u00A7" + [...b].map((x) => x.toString(16).padStart(2, "0")).join("") + "\u00A7";
 }
 
 /** Datamark: interleave a marker between words so injected sentences are visibly "data". */
-export function datamark(text: string, mark = "ˆ"): string {
+export function datamark(text: string, mark = "\u02C6"): string {
   return normalise(text).split(" ").join(mark);
 }
 

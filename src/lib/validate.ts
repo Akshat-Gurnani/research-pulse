@@ -2,11 +2,11 @@
 import { plainText, scan } from "./inject";
 import { WPM } from "./config";
 
-const norm = (s: string) => s.toLowerCase().normalize("NFKC").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, " ").trim();
+const norm = (s: string) => s.toLowerCase().normalize("NFKC").replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/\s+/g, " ").trim();
 
 /** Quote must be a (normalised) substring of the abstract. */
 export function quoteInAbstract(quote: string, abstract: string): boolean {
-  const q = norm(quote).replace(/^[.…\s]+|[.…\s]+$/g, "");
+  const q = norm(quote).replace(/^[.\u2026\s]+|[.\u2026\s]+$/g, "");
   return q.length >= 12 && norm(abstract).includes(q);
 }
 
