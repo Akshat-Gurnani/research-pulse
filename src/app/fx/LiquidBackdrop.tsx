@@ -69,12 +69,12 @@ export function LiquidBackdrop() {
     // finish each frame, and reports the real per-frame cost on this device. Works even in a hidden tab.
     if (new URLSearchParams(window.location.search).has("fxbench")) {
       const off = document.createElement("canvas");
-      off.width = canvas.width || window.innerWidth; off.height = canvas.height || window.innerHeight;
+      const benchDpr = Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
+      off.width = Math.round(window.innerWidth * benchDpr); off.height = Math.round(window.innerHeight * benchDpr);
       const octx = off.getContext("2d");
       if (octx) {
         const bench = new Field(octx, readPalette(), Math.random, lowPower);
-        const dpr = off.width / Math.max(1, window.innerWidth);
-        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        octx.setTransform(benchDpr, 0, 0, benchDpr, 0, 0);
         bench.resize(window.innerWidth, window.innerHeight, getFx().counts);
         const N = 240, t0 = performance.now();
         for (let i = 0; i < N; i++) { bench.frame(1 / 60, i % 60 < 30 ? null : "flag"); octx.getImageData(0, 0, 1, 1); }
