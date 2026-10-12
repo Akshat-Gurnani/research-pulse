@@ -166,6 +166,25 @@ describe("force", () => {
   });
 });
 
+describe("re-publishing a week", () => {
+  it("drops 'featured' rows for papers the final brief no longer shows, but keeps other weeks' rows", async () => {
+    setVisible([...EARLY, ...SUNDAY]);
+    const { runWeekly } = await import("../src/lib/pipeline");
+    await runWeekly(MONDAY_EARLY, { force: true });
+    await h.db.from("featured").insert([
+      { arxiv_id: "9999.00001", first_week_key: WEEK, last_week_key: WEEK },   // shown in an earlier version of this week
+      { arxiv_id: "9999.00002", first_week_key: "2026-W41", last_week_key: "2026-W41" }, // a previous week: must survive
+    ]);
+    await h.db.from("brief_runs").update({ status: "pending", snapshot: null }).eq("week_key", WEEK);
+    await runWeekly(MONDAY_EARLY, { force: true });
+    const ids = (await rows("featured")).map((r) => r.arxiv_id);
+    expect(ids).not.toContain("9999.00001");
+    expect(ids).toContain("9999.00002");
+    const shown = (await rows("brief_items")).map((r) => r.arxiv_id).sort();
+    expect((await rows("featured")).filter((r) => r.first_week_key === WEEK).map((r) => r.arxiv_id).sort()).toEqual(shown);
+  });
+});
+
 describe("superseding a delivered late-batch brief", () => {
   it("a send_log row reset to a stale 'pending' is retried exactly once and keeps one row", async () => {
     setVisible([...EARLY, ...SUNDAY]);

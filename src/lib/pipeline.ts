@@ -248,7 +248,7 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
       domains: domainOut, word_count: totalWords, reading_minutes: readingMinutes(totalWords), models: [...models],
       notes: [
         ...(missingBatch ? ["The Sunday-evening arXiv batch was not visible at build time; those papers appear next week."] : []),
-        ...(dropped.length ? [`${dropped.length} lower-ranked papers were left out to keep the brief under ${readingMinutes(WORD_BUDGET)} minutes.`] : []),
+        ...(dropped.length ? [`${dropped.length} lower-ranked papers were left out to keep the brief to about ${readingMinutes(WORD_BUDGET)} minutes.`] : []),
         ...([...models].some((m) => /lite/i.test(m)) ? ["Some summaries came from Gemini Flash-Lite (degraded mode)."] : []),
       ],
     };
@@ -268,6 +268,10 @@ async function publish(brief: Brief, kept: { domainId: number; card: BriefCard }
   await db().from("brief_items").delete().eq("week_key", w.weekKey);
   if (items.length) must(await db().from("brief_items").insert(items), "brief_items");
   await db().from("featured").upsert(kept.map((k) => ({ arxiv_id: k.card.arxiv_id, first_week_key: w.weekKey, last_week_key: w.weekKey })), { onConflict: "arxiv_id", ignoreDuplicates: true });
+  // A re-publish of the same week must not leave papers marked as featured that the final brief dropped.
+  const keep = new Set(kept.map((k) => k.card.arxiv_id));
+  const stale = (((await db().from("featured").select("arxiv_id").eq("first_week_key", w.weekKey)).data ?? []) as { arxiv_id: string }[]).map((r) => r.arxiv_id).filter((id) => !keep.has(id));
+  if (stale.length) await db().from("featured").delete().in("arxiv_id", stale).eq("first_week_key", w.weekKey);
   must(await db().from("brief_runs").update({ status: "published", published_at: new Date().toISOString(), lease_expires: null, ladder_level: brief.ladder_level, partial: brief.partial, late_batch: !!brief.late_batch, calls_used: calls, word_count: brief.word_count, reading_minutes: brief.reading_minutes, snapshot: brief as any, error_summary: null }).eq("week_key", w.weekKey), "publish");
   if (opt("BLOB_READ_WRITE_TOKEN")) { try { await put("latest-brief.json", JSON.stringify(brief), { access: "public", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json" }); } catch { /* snapshot is a fallback only */ } }
 }
