@@ -53,16 +53,16 @@ export function RunControls({ showViewLink = false, refreshOnDone = false }: { s
   }
 
   return (
-    <div className="dom" data-testid="run-controls">
-      <h2 style={{ marginTop: 0 }}>Run the brief now</h2>
+    <section className="dom glass" data-testid="run-controls" aria-label="Run the brief now">
+      <h2 style={{ marginTop: 0, fontSize: 18 }}>Run the brief now</h2>
       <p className="meta">Re-runs this week on demand: fetches the latest papers, scores and summarises anything new (already-processed papers are reused, so repeat runs are cheap), and replaces the published brief. The current brief stays online until the new one is ready. No email is sent by this button.</p>
       <p>
         <button type="button" disabled={run.busy} onClick={generate}>{run.busy ? "Running..." : "Generate this week's brief now"}</button>
         {showViewLink && <a href="/" style={{ marginLeft: 12 }}>View the brief</a>}
       </p>
       <p className="meta" role="status" style={{ color: run.ok === false ? "var(--ochre)" : undefined }}>{run.text}</p>
-      <p><button type="button" onClick={emailMe}>Email me the current brief</button></p>
+      <p><button type="button" className="ghost" onClick={emailMe}>Email me the current brief</button></p>
       <p className="meta" role="status">{mail}</p>
-    </div>
+    </section>
   );
 }

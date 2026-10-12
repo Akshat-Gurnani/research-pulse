@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { loadBrief } from "@/lib/brief";
-import { BriefView } from "@/app/BriefView";
+import { BriefExperience } from "@/app/BriefExperience";
 export const dynamic = "force-dynamic";
 export default async function Week({ params }: { params: Promise<{ week: string }> }) {
   const { week } = await params;
@@ -8,5 +8,5 @@ export default async function Week({ params }: { params: Promise<{ week: string 
   const r = await loadBrief(week);
   // The seed is only a fallback for the latest brief; never present it as a specific past or future week.
   if (r.rung === "seed") notFound();
-  return <BriefView {...r} />;
+  return <BriefExperience brief={r.brief} rung={r.rung} stale={r.stale} />;
 }
