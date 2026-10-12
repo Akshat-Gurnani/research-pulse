@@ -1,12 +1,514 @@
 {
-  "week_key": "seed",
-  "label": "Offline snapshot (placeholder: run `npm run make-seed` to replace with real, dated papers)",
-  "generated_at": "2026-01-01T00:00:00.000Z",
+  "label": "Offline snapshot of Papers announced 6 Oct to 12 Oct 2026",
+  "notes": [
+    "2 lower-ranked papers were left out to keep the brief under 9 minutes."
+  ],
+  "models": [
+    "gemini-3.8-flash"
+  ],
+  "domains": [
+    {
+      "id": 1,
+      "name": "AI agents",
+      "items": [
+        {
+          "url": "https://arxiv.org/abs/2610.09021",
+          "score": 78.6341463414634,
+          "title": "Not Every Call Needs a Frontier Model: Per-Call-Site Evaluation of Small Language Models in a Deployed Agentic Home-Automation System",
+          "action": "flag_for_client",
+          "caveat": "Evaluation is restricted to home-automation tasks using 280 cases across two Home Assistant installations and one human judge.",
+          "claims": [
+            {
+              "claim": "the authors report that capability varies across call sites and larger models do not always outperform smaller ones.",
+              "quote": "We find that capability is not ordered the same way at every site, and that larger models are not uniformly better: one 4B model is worse than its 2B sibling at grounded actuation."
+            },
+            {
+              "claim": "the authors report that code generation is the only site where hosted models significantly outperform the best local model.",
+              "quote": "Paired testing shows the best local model to be statistically indistinguishable from both hosted models at four of five sites. Only code generation separates them, against a small hosted model (p = 0.039) as well as a frontier one (p = 0.002)."
+            },
+            {
+              "claim": "the authors report that selectively hosting generative sites achieves parity with fully hosted systems at 28% of the cost.",
+              "quote": "In a live deployment judged by a user, hosting only the two generative sites matches hosting everything (39/43 against 39/43) for 28% of the spend"
+            }
+          ],
+          "authors": [
+            "Panagiotis Kasnesis",
+            "Christos Chatzigeorgiou",
+            "Lazaros Toumanidis",
+            "Amalia Contiero Syropoulou"
+          ],
+          "arxiv_id": "2610.09021",
+          "published": "2026-10-06T19:18:59.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Teams deploying multi-agent pipelines can substantially reduce operational costs by substituting small or local models at simpler call sites and reserving frontier models for code generation."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.04966",
+          "score": 78.6341463414634,
+          "title": "BACAM: Behavior-Aware Continual Agent Merging for Multi-Turn Interaction",
+          "action": "skim",
+          "caveat": "Results are confined to four specific interactive benchmark domains reported in the abstract.",
+          "claims": [
+            {
+              "claim": "the authors report that BACAM enables sequential agent merging without maintaining past experts.",
+              "quote": "We study continual agent merging, which integrates incoming experts sequentially without retaining previously merged experts."
+            },
+            {
+              "claim": "the authors report that BACAM achieves an average success rate of 62.82% across four interactive tasks, beating the strongest baseline by 21.69 percentage points.",
+              "quote": "Across four interactive tasks - web shopping, tool use, information retrieval, and embodied interaction - BACAM achieves an average success rate of 62.82%, exceeding the strongest evaluated merging baseline by 21.69 percentage points."
+            }
+          ],
+          "authors": [
+            "Shuaitong Li",
+            "Baochen Xiong",
+            "Xiaoshan Yang",
+            "Xizhe Zheng"
+          ],
+          "arxiv_id": "2610.04966",
+          "published": "2026-10-04T05:26:08.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Enables combining specialized multi-turn agents sequentially without extra inference overhead or needing access to all experts at once."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.09781",
+          "score": 78.6341463414634,
+          "title": "End-to-End Autonomous Generation of Human Assembly Plans",
+          "action": "skim",
+          "caveat": "Assembly time reductions were evaluated using a simulated robot-arm proxy rather than real-world physical human assembly.",
+          "claims": [
+            {
+              "claim": "The authors report that DfA-aware sequence planning reduces simulated assembly time by 35% compared to a baseline on 136 assemblies.",
+              "quote": "Compared with a baseline that always removes the outermost part first from Tian et al., DfA-aware sequence planning reduces simulated assembly time, measured with a robot-arm assembly-time proxy, by 35% on 136 assemblies of 5 to 30 parts."
+            },
+            {
+              "claim": "The authors report that their approach selects the correct tool for 88.6% of assembly steps.",
+              "quote": "The correct tool is selected for 88.6% of assembly steps."
+            }
+          ],
+          "authors": [
+            "Faustin Arion von Arx",
+            "Millicent Schlafly",
+            "Mark D. Fuge"
+          ],
+          "arxiv_id": "2610.09781",
+          "published": "2026-10-07T10:01:01.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Autonomous assembly planning from raw mesh files can enable AI agents to generate manufacturing workflows and manuals without manual engineering annotations."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.09624",
+          "score": 72.03414634146341,
+          "title": "How Do Agentic LLMs Decide to Call Tools? A Tool-Call Vector Shaped by Suppression",
+          "action": "read",
+          "caveat": "Analysis relies heavily on paired contrastive synthetic prompts and is evaluated on models from three specific open families.",
+          "claims": [
+            {
+              "claim": "the authors report finding a single causal vector that governs tool-calling decisions across multiple languages and trajectories.",
+              "quote": "We trace the decision to a vector, $μ_Δ$, that is both causally necessary and sufficient and generalizes beyond the discovery prompts to native multi-turn $τ^2$-Bench trajectories and verb-free requests."
+            },
+            {
+              "claim": "the authors report that prompt scaffolds establish tool-call priors which analysis verbs suppress.",
+              "quote": "Behavioral ablations show that the scaffold establishes a tool-call prior; Transcoder decomposition then reveals that analysis verbs suppress this prior through features signaling that tool use is unnecessary"
+            },
+            {
+              "claim": "the authors report that this mechanistic tool-calling mechanism recurs across seven models from three distinct families.",
+              "quote": "the same mechanism recurs across seven models from the Qwen, Mistral, and Granite families."
+            }
+          ],
+          "authors": [
+            "Xijie Gong",
+            "Tingxu Han",
+            "Jiahao Zhang",
+            "Wei Song"
+          ],
+          "arxiv_id": "2610.09624",
+          "published": "2026-10-07T08:01:39.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Provides a mechanistic understanding of how prompt wording suppresses or triggers tool invocation, aiding predictable agent prompt engineering and steering."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Retrieval-augmented generation",
+      "items": [
+        {
+          "url": "https://arxiv.org/abs/2610.08463",
+          "score": 71.98888888888888,
+          "title": "UNREAL: Unifying Retrieval and Long-Context with a Single Model",
+          "action": "read",
+          "caveat": "Evaluated only on Wikipedia and standard benchmark datasets, with abstract-level details omitted regarding general domain transfer.",
+          "claims": [
+            {
+              "claim": "the authors report that UNREAL requires fewer than 500K trainable parameters while keeping the backbone model frozen.",
+              "quote": "It adds fewer than 500K trainable parameters and leaves the backbone unchanged."
+            },
+            {
+              "claim": "the authors report that the best UNREAL model substantially increases retrieval recall across HotpotQA, 2WikiMultiHopQA, and MuSiQue.",
+              "quote": "The best model raises recall from 49.1% to 73.2% on HotpotQA, from 31.7% to 60.1% on 2WikiMultiHopQA, and from 8.8% to 14.4% on MuSiQue."
+            },
+            {
+              "claim": "the authors report that UNREAL enhances long-context accuracy on NoLiMa and LV-Eval by eliminating distractors before generation.",
+              "quote": "Applied to long-context tasks, the same selection mechanism removes distractors before generation, raising NoLiMa accuracy from 1.0% to 24.83% at its maximum context length of 128K tokens, and LV-Eval's F1 score from 49.97% to 54.66% at 256K."
+            },
+            {
+              "claim": "the authors report that UNREAL reduces computation FLOPs and time-to-first-token relative to full-context inference from about 32K tokens onward.",
+              "quote": "UNREAL also reduces FLOPs and time-to-first-token relative to full-context inference from roughly 32K tokens onward, with larger gains as context grows."
+            }
+          ],
+          "authors": [
+            "Edan Kinderman",
+            "Elad Hoffer",
+            "Yochai Blau",
+            "Brian Chmiel"
+          ],
+          "arxiv_id": "2610.08463",
+          "published": "2026-10-06T14:48:53.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Unifying corpus retrieval and long-context filtering via lightweight additions to frozen LLMs could significantly reduce infrastructure complexity and compute costs."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.13128",
+          "score": 71.28888888888889,
+          "title": "Locate, Judge, Read: Role-Specialized Tool Agents over a Knowledge-Point Index for Open-Domain Multimodal Document QA",
+          "action": "read",
+          "caveat": "Evaluated primarily on standard benchmarks without real-world enterprise production trials mentioned in the abstract.",
+          "claims": [
+            {
+              "claim": "The authors report KnowForge achieves an F1 of 47.5 on M3DocVQA using Qwen3.6-35B-A3B, outperforming M3DocRAG by 11.0 points.",
+              "quote": "KnowForge reaches F1 47.5 on the full open-domain M3DocVQA (2,441 questions, 3,368 PDFs), +11.0 over the published M3DocRAG system and +7.1 over one-shot retrieve-and-answer on the same index and model, and 53.5 with DeepSeek-V4-Flash."
+            },
+            {
+              "claim": "The authors report KnowForge attains 73.5 accuracy on MultiHop-RAG, surpassing previous published RAG and GraphRAG baselines.",
+              "quote": "On MultiHop-RAG it reaches 73.5 accuracy, above the strongest published RAG and GraphRAG results (71.2)"
+            },
+            {
+              "claim": "The authors report that consolidating search and reading tools into a single agent degrades performance by 1.9 F1.",
+              "quote": "merging both agents into one with all tools and twice the rounds loses 1.9 F1 because it keeps searching instead of reading"
+            }
+          ],
+          "authors": [
+            "Wenlin Lin",
+            "Fanzhe Wei"
+          ],
+          "arxiv_id": "2610.13128",
+          "published": "2026-10-09T07:21:36.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Specializing multi-modal RAG agents into distinct locator and reader roles outperforms single-agent architectures while matching larger closed models."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.10507",
+          "score": 64.48888888888888,
+          "title": "RECAST: Learning to Compute the Right Context through Adaptive Evidence Routing",
+          "action": "read",
+          "caveat": "The multi-model setup involves RouterLM, CompilerLM, and AnswerLM executing generated code, introducing operational complexity and latency risks.",
+          "claims": [
+            {
+              "claim": "the authors report that RECAST reaches a 75.6% mean success rate across six benchmark families, surpassing the strongest large baseline by 15.9%.",
+              "quote": "Across six heterogeneous benchmark families, RECAST achieves a mean success rate of 75.6%, outperforming the strongest large-model baseline by 15.9%."
+            },
+            {
+              "claim": "the authors report that a trained Qwen3.5-9B RouterLM beats a training-free Gemini 3.5 Flash RouterLM by 5.0%.",
+              "quote": "training enables the Qwen3.5-9B RouterLM to outperform a training-free Gemini 3.5 Flash RouterLM by 5.0%."
+            },
+            {
+              "claim": "the authors report that RECAST beats the top baseline by an average of 15.0% across three held-out benchmarks.",
+              "quote": "On three held-out benchmarks, RECAST improves over the strongest baseline by 15.0% on average, demonstrating strong zero-shot generalization across tasks and heterogeneous source representations."
+            }
+          ],
+          "authors": [
+            "Yilun Hao",
+            "Krishna Sayana",
+            "Isabella Ye",
+            "James S Ren"
+          ],
+          "arxiv_id": "2610.10507",
+          "published": "2026-10-07T17:51:08.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Allowing RAG systems to synthesize tools and dynamically aggregate data overcomes fundamental limits of similarity-only retrieval for multi-step reasoning."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.08452",
+          "score": 64.48888888888888,
+          "title": "Agentic AutoRAG: RAG Pipeline Optimization through Reasoning-Driven Agents",
+          "action": "flag_for_client",
+          "caveat": "Relying on LLM-judge accuracy and specialized diagnostic agents may incur high optimization-time costs not detailed in the abstract.",
+          "claims": [
+            {
+              "claim": "the authors report that Agentic AutoRAG matches or outperforms statistical baseline 30-trial accuracy within its first 10 trials.",
+              "quote": "within its first 10 trials it matches or beats the statistical baselines' full 30-trial judge accuracy."
+            },
+            {
+              "claim": "the authors report that on a healthcare corpus, it achieves 77% median exam accuracy at roughly 58% of the strongest baseline's cost.",
+              "quote": "In its cost-aware mode on a real-world healthcare corpus it reaches a median exam accuracy of 77%, above the strongest baseline's 71.5%, at about 58% of that baseline's cost per query, and it matches that 71.5% at about 22% of the cost."
+            }
+          ],
+          "authors": [
+            "Lasse B. Strand",
+            "Robert Jakob",
+            "Kevin O'Sullivan",
+            "Markus Kreft"
+          ],
+          "arxiv_id": "2610.08452",
+          "published": "2026-10-06T14:38:15.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Automating RAG pipeline optimization using error attribution can dramatically reduce tuning time and operational inference costs."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.07731",
+          "score": 64.48888888888888,
+          "title": "Learning to Retrieve via Reinforcement Learning in Embedding Space",
+          "action": "skim",
+          "caveat": "High-dimensional embedding exploration introduces sampling noise, requiring subspace projection techniques whose computational overhead is not quantified in the abstract.",
+          "claims": [
+            {
+              "claim": "the authors report that RELER outperforms InfoNCE and LambdaLoss in average nDCG@10 when fine-tuning dense embedding backbones.",
+              "quote": "RELER consistently outperforms InfoNCE and LambdaLoss in average nDCG@10 when post-training BGE-M3 and Qwen3-Embedding backbones."
+            },
+            {
+              "claim": "the authors report that adapting only the query encoder with joint rewards improves both retrieval and generation across seven QA datasets.",
+              "quote": "Across seven QA datasets, jointly optimizing retrieval and answer rewards improves both average retrieval performance and answer quality in RAG."
+            }
+          ],
+          "authors": [
+            "Qi Liu",
+            "Fengming Liang",
+            "Yiqun Chen",
+            "Erhan Zhang"
+          ],
+          "arxiv_id": "2610.07731",
+          "published": "2026-10-06T04:29:29.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Reinforcement learning directly on query embeddings allows organizations to optimize retrieval performance for downstream RAG tasks without re-indexing document corpora."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "LLMs for code",
+      "items": [
+        {
+          "url": "https://arxiv.org/abs/2610.06481",
+          "score": 82.75,
+          "title": "AECP: Artifact-Exclusive Communication Protocol for Multi-Agent Code Generation",
+          "action": "read",
+          "caveat": "Evaluations and claims are reported only from three specific benchmarks and a limited set of named models.",
+          "claims": [
+            {
+              "claim": "the authors report that AECP improves test pass rates by 28.2 percent and decreases wall time by 16.5 percent compared to free-form messaging.",
+              "quote": "AECP improves average test pass rate by 28.2% and reduces average wall time by 16.5% relative to an agent team using free-form inter-agent messages."
+            },
+            {
+              "claim": "the authors report that artifact-exclusive communication stops the propagation of malicious instructions between agents completely.",
+              "quote": "Artifact-exclusive communication also blocks the relay of malicious instructions between agents, reducing how often they reach other agents from 95% to 0% and how often those agents act on them from 40% to 0%."
+            }
+          ],
+          "authors": [
+            "Jiaqi Xue",
+            "Yanjun Wang",
+            "Xiangci Li",
+            "Lingbo Mo"
+          ],
+          "arxiv_id": "2610.06481",
+          "published": "2026-10-05T15:08:14.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Enforcing coordination via structured artifacts rather than conversational agent messaging can substantially boost task performance, lower runtime, and neutralize prompt-relay attacks."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.06193",
+          "score": 76.15,
+          "title": "Correct Code, Broken Contributions? SWE-CC: Benchmarking Repository Policy Compliance for Coding Agents",
+          "action": "flag_for_client",
+          "caveat": "Policies are synthesized from developer documentation across only 12 open-source repositories.",
+          "claims": [
+            {
+              "claim": "the authors report that coding agents violate 43.1 percent of repository contribution policies despite generating functionally correct patches.",
+              "quote": "although agents produce functionally correct patches, they still violate 43.1 percent of applicable project policies, with nearly half of all violations occurring during intermediate execution steps."
+            }
+          ],
+          "authors": [
+            "Hai Dang Truong",
+            "Rayner Goh",
+            "Thanh Le-Cong",
+            "Yintong Huo"
+          ],
+          "arxiv_id": "2610.06193",
+          "published": "2026-10-05T12:08:33.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Passing unit tests is insufficient for real-world PR merges, as agents regularly violate practical project governance, git, and testing standards during execution."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.07446",
+          "score": 69.35,
+          "title": "CogAdapt: Cognition-informed Sparse Adaptation of Code LLMs",
+          "action": "skim",
+          "caveat": "Relies on pre-collected human EEG and attention data to learn priors, and evaluations are limited to the reported benchmarks and models.",
+          "claims": [
+            {
+              "claim": "The authors report that CogAdapt reduces gradient-eligible adaptation parameters by 86.21% to 87.21% while improving pass@1 over matched regular fine-tuning on LiveCodeBench.",
+              "quote": "CogAdapt achieves the best pass@1 across both LiveCodeBench and BigCodeBench, including gains of 10.86 and 6.29 percentage points over matched regular fine-tuning on LiveCodeBench, while reducing gradient-eligible adaptation parameters by 86.21-87.21%."
+            },
+            {
+              "claim": "The authors report finding consistent correspondence between human reading behavior and Mixture-of-Experts computation across Qwen and GLM.",
+              "quote": "Across Qwen and GLM, we find consistent correspondence between human reading behavior and Mixture-of-Experts (MoE) computation."
+            }
+          ],
+          "authors": [
+            "Yueke Zhang",
+            "Zihan Fang",
+            "Kevin Leach",
+            "Yu Huang"
+          ],
+          "arxiv_id": "2610.07446",
+          "published": "2026-10-05T21:55:44.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Selectively updating model blocks guided by human cognitive priors can dramatically cut fine-tuning parameter costs while boosting code generation benchmark performance."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.10242",
+          "score": 69.35,
+          "title": "TestGRAD: Evolving Test Suites via Failure Pattern Momentum for SWE-Agent Ensemble",
+          "action": "read",
+          "caveat": "Evaluation is reported only on SWE-bench Verified, with reliance on generating and executing repository tests across a multi-agent framework.",
+          "claims": [
+            {
+              "claim": "The authors report that TestGRAD achieves 84.2% Pass@1 with a 4-agent ensemble on SWE-bench Verified, outperforming the strongest baseline by 3.6 percentage points.",
+              "quote": "On SWE-bench Verified, TestGRAD achieves 84.2% Pass@1 with a 4-agent ensemble, outperforming the strongest baseline (80.6%) by an absolute improvement of 3.6 percentage points, while compressing failure-history context by over $100\\times$."
+            }
+          ],
+          "authors": [
+            "Pengfei He",
+            "Jiayuan Zhou",
+            "Shaowei Wang",
+            "Ruiqi Pan"
+          ],
+          "arxiv_id": "2610.10242",
+          "published": "2026-10-07T15:25:15.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Ensembling software engineering agents with test-space optimization offers a concrete mechanism to select correct patches and boost automated issue resolution."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.09804",
+          "score": 62.75,
+          "title": "BoT-GRPO: Efficient Process-Reward RL for Reasoning via Bag-of-Token Aggregation",
+          "action": "read",
+          "caveat": "Requires an existing token-level reward model, which the authors note must be clean, bounded, and stable to prevent learning stalls.",
+          "claims": [
+            {
+              "claim": "The authors report that BoT-GRPO reaches an 80% compile rate on React front-end code generation up to 1.9x faster than standard GRPO.",
+              "quote": "On React front-end code generation, BoT-GRPO reaches $80\\%$ compile rate up to $1.9\\times$ faster than GRPO and converges faster than modern GRPO variants (GSPO, DAPO, PURE) while reaching higher final compile and VLM-judged win rates."
+            },
+            {
+              "claim": "The authors report absolute Pass@k gains up to 8.1% over GRPO in half the steps on AIME mathematical reasoning.",
+              "quote": "On a second task, AIME mathematical reasoning, BoT-GRPO delivers absolute Pass@$k$ gains up to $8.1\\%$ over GRPO in half the steps."
+            }
+          ],
+          "authors": [
+            "Yingxiang Yang",
+            "Weihang Xiao",
+            "Zhunxuan Wang",
+            "Joshua Flashner"
+          ],
+          "arxiv_id": "2610.09804",
+          "published": "2026-10-07T10:23:17.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Provides a critic-free token-level process supervision method that speeds up RL training for reasoning and code generation without needing complex value networks."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Computer vision for industrial applications",
+      "items": [
+        {
+          "url": "https://arxiv.org/abs/2610.06973",
+          "score": 66.22222222222223,
+          "title": "Event Cameras for Melt-Pool Monitoring in Additive Manufacturing: A Benchmark and a Cross-Machine Transfer Analysis",
+          "action": "flag_for_client",
+          "caveat": "Benchmark uses synthetic simulated event shards and material classification remains confounded by camera band.",
+          "claims": [
+            {
+              "claim": "The authors report that event-spatial monitoring matches dense-frame accuracy with minimal gain from adding absolute intensity.",
+              "quote": "On a single-machine case study, event-spatial monitoring matches dense-frame accuracy (0.874 versus 0.863 macro-F1), and the absolute intensity that events discard adds only +0.006 under fusion."
+            },
+            {
+              "claim": "The authors report that an event-rate counter recovers a high-frequency oscillation with roughly 380 times less sensor readout than frames.",
+              "quote": "On the NIST Additive Manufacturing Metrology Testbed (AMMT) build, a near-sensor event-rate counter recovers a raw-frame-confirmed 528.7 Hz intensity oscillation at ~380 times less sensor readout than the frame stream requires."
+            },
+            {
+              "claim": "The authors report that a 93 k-parameter spiking model yields 15 times lower modeled inference energy.",
+              "quote": "A compact 93 k-parameter spiking model runs at 15 times lower modeled inference energy for a 0.073 macro-F1 cost."
+            }
+          ],
+          "authors": [
+            "Mohamad Yazan Sadoun",
+            "Sarah Sharif",
+            "Yingtao Liu",
+            "Zahed Siddique"
+          ],
+          "arxiv_id": "2610.06973",
+          "published": "2026-10-03T23:01:03.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Event cameras can drastically reduce data rates and inference energy for high-speed melt-pool monitoring in metal additive manufacturing."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.07326",
+          "score": 66.22222222222223,
+          "title": "Localize Any Object in X-Ray Security Scans without Human Annotation",
+          "action": "read",
+          "caveat": "Real-world runtime performance and latency impacts are not mentioned in the abstract, and evaluations rely on reported benchmark gains.",
+          "claims": [
+            {
+              "claim": "The authors report that LAO-X fine-tunes SAM2 using a physics-guided synthesis and an occlusion-controlled curriculum strategy.",
+              "quote": "LAO-X further incorporates an occlusion-controlled curriculum strategy to fine-tune a Segment Anything Model 2 (SAM2) localizer, progressively adapting it to X-ray scans with increasing object counts and overlap levels."
+            }
+          ],
+          "authors": [
+            "Yaqi Cai",
+            "Mingxuan Liu",
+            "Lorenzo Vaquero",
+            "Ning Wang"
+          ],
+          "arxiv_id": "2610.07326",
+          "published": "2026-10-05T19:57:49.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "It enables automated threat and object localization in industrial X-ray security scanning without requiring expensive expert human annotations."
+        },
+        {
+          "url": "https://arxiv.org/abs/2610.06596",
+          "score": 50.84444444444444,
+          "title": "Analysis of SWIR Imaging Detection Performance Under Adverse Environmental Conditions for Autonomous Driving Systems",
+          "action": "skim",
+          "caveat": "Evaluated only on a single paired dataset (RASMD) across two detection architectures.",
+          "claims": [
+            {
+              "claim": "The authors report that standard RGB performs comparably or better in most scenarios, but SWIR excels in specific safety-critical edge cases.",
+              "quote": "Overall, RGB demonstrates comparable or superior performance in most scenarios, while RF-DETR exhibits greater robustness across varying conditions."
+            },
+            {
+              "claim": "The authors report that SWIR provides clear benefits under four distinct adverse conditions.",
+              "quote": "This analysis reveals that SWIR offers clear advantages in four safety-critical situations, including windshield glare, water droplets on the windshield, low-contrast object visibility, and long-range vehicle detection."
+            }
+          ],
+          "authors": [
+            "Rohan Mehra",
+            "Alexandre Riffard",
+            "Yannis Loumouamou",
+            "Mathieu Labussière"
+          ],
+          "arxiv_id": "2610.06596",
+          "published": "2026-10-05T16:07:29.000Z",
+          "evidence_type": "benchmarks_reported",
+          "why_it_matters": "Clarifies the real-world value proposition of expensive SWIR sensors as complementary safety modalities rather than full RGB replacements."
+        }
+      ]
+    }
+  ],
+  "partial": false,
+  "week_key": "2026-W42",
+  "late_batch": false,
+  "word_count": 1842,
+  "generated_at": "2026-10-12T10:14:11.784Z",
   "ladder_level": 3,
-  "partial": true,
-  "domains": [],
-  "word_count": 0,
-  "reading_minutes": 1,
-  "models": [],
-  "notes": ["Placeholder seed. Replace with a real brief before submission (see docs/BUILD_PLAN.md, phase 0)."]
+  "reading_minutes": 9
 }
