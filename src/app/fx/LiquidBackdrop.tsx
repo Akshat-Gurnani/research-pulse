@@ -10,6 +10,9 @@ import type { Verdict } from "@/lib/motion";
  * (parallax) and to the page filter (the focused verdict's nodes swell and glow). Pauses when hidden; static under
  * reduced motion. The simulation itself lives in src/lib/field.ts.
  */
+/** Soft gradients gain nothing from Retina sharpness but cost pixels^2, so the backdrop renders at a capped resolution. */
+const dprCap = (lowPower: boolean) => (lowPower ? 1 : 1.25);
+
 function readPalette(): FieldPalette {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string) => cs.getPropertyValue(n).trim();
@@ -36,7 +39,7 @@ export function LiquidBackdrop() {
     let raf = 0, last = 0, running = false, avgMs = 0, count = 0;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, dprCap(lowPower));
       canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       field.resize(window.innerWidth, window.innerHeight, getFx().counts);
@@ -69,9 +72,10 @@ export function LiquidBackdrop() {
     // finish each frame, and reports the real per-frame cost on this device. Works even in a hidden tab.
     if (new URLSearchParams(window.location.search).has("fxbench")) {
       const off = document.createElement("canvas");
-      // ?fxbench=2 forces a device-pixel-ratio of 2 to measure a Retina display from any screen
+      // ?fxbench=2 pretends the device has a pixel ratio of 2 (Retina), to measure that case from any screen
       const forced = Number(new URLSearchParams(window.location.search).get("fxbench"));
-      const benchDpr = forced > 1 ? forced : Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
+      const deviceDpr = forced > 1 ? forced : window.devicePixelRatio || 1;
+      const benchDpr = Math.min(deviceDpr, dprCap(lowPower));   // exactly what the live canvas would use on that device
       off.width = Math.round(window.innerWidth * benchDpr); off.height = Math.round(window.innerHeight * benchDpr);
       const octx = off.getContext("2d");
       if (octx) {
