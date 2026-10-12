@@ -65,6 +65,26 @@ export function LiquidBackdrop() {
     const dark = window.matchMedia("(prefers-color-scheme: dark)");
     const onTheme = () => { field.pal = readPalette(); if (!running) field.render(); };
 
+    // Opt-in self-benchmark (?fxbench=1): renders 240 frames synchronously on a detached canvas, forcing the raster to
+    // finish each frame, and reports the real per-frame cost on this device. Works even in a hidden tab.
+    if (new URLSearchParams(window.location.search).has("fxbench")) {
+      const off = document.createElement("canvas");
+      off.width = canvas.width || window.innerWidth; off.height = canvas.height || window.innerHeight;
+      const octx = off.getContext("2d");
+      if (octx) {
+        const bench = new Field(octx, readPalette(), Math.random, lowPower);
+        const dpr = off.width / Math.max(1, window.innerWidth);
+        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        bench.resize(window.innerWidth, window.innerHeight, getFx().counts);
+        const N = 240, t0 = performance.now();
+        for (let i = 0; i < N; i++) { bench.frame(1 / 60, i % 60 < 30 ? null : "flag"); octx.getImageData(0, 0, 1, 1); }
+        const ms = (performance.now() - t0) / N;
+        canvas.dataset.benchMs = ms.toFixed(2);
+        canvas.dataset.benchNodes = String(bench.nodes.length);
+        canvas.dataset.benchPx = `${off.width}x${off.height}`;
+      }
+    }
+
     resize();
     field.setScroll(window.scrollY);
     canvas.classList.add("on");
