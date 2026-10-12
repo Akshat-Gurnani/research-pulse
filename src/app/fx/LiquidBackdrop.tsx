@@ -69,7 +69,9 @@ export function LiquidBackdrop() {
     // finish each frame, and reports the real per-frame cost on this device. Works even in a hidden tab.
     if (new URLSearchParams(window.location.search).has("fxbench")) {
       const off = document.createElement("canvas");
-      const benchDpr = Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
+      // ?fxbench=2 forces a device-pixel-ratio of 2 to measure a Retina display from any screen
+      const forced = Number(new URLSearchParams(window.location.search).get("fxbench"));
+      const benchDpr = forced > 1 ? forced : Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2);
       off.width = Math.round(window.innerWidth * benchDpr); off.height = Math.round(window.innerHeight * benchDpr);
       const octx = off.getContext("2d");
       if (octx) {
