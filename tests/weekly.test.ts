@@ -166,6 +166,24 @@ describe("force", () => {
   });
 });
 
+describe("superseding a delivered late-batch brief", () => {
+  it("a send_log row reset to a stale 'pending' is retried exactly once and keeps one row", async () => {
+    setVisible([...EARLY, ...SUNDAY]);
+    const { runWeekly, deliver } = await import("../src/lib/pipeline");
+    await runWeekly(MONDAY_EARLY, { force: true });
+    expect((await deliver(MONDAY_EARLY)).sent).toBe(1);
+    expect(h.send).toHaveBeenCalledTimes(1);
+    expect((await deliver(MONDAY_EARLY)).skipped).toBe(1); // exactly-once: a second delivery is a no-op
+    expect(h.send).toHaveBeenCalledTimes(1);
+    await h.db.from("send_log").update({ status: "pending", created_at: new Date(Date.now() - 3600_000).toISOString() }).eq("week_key", WEEK);
+    expect((await deliver(MONDAY_EARLY)).sent).toBe(1);
+    expect(h.send).toHaveBeenCalledTimes(2);
+    const log = await rows("send_log");
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ status: "sent", attempts: 2 });
+  });
+});
+
 describe("Duplicate triggers", () => {
   it("two concurrent weekly calls produce one brief and one send_log row", async () => {
     setVisible([...EARLY, ...SUNDAY]);
