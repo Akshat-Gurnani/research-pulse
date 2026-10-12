@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { allocateNodes, nodeCountFor, repel, shouldDismiss, dragOffset, scrollProgress, easeOutCubic, rgba, orbPosition, clamp } from "@/lib/motion";
+import { allocateNodes, nodeCountFor, repel, shouldDismiss, dragOffset, releaseVelocity, scrollProgress, easeOutCubic, rgba, orbPosition, clamp } from "@/lib/motion";
 
 describe("nodeCountFor", () => {
   it("scales with the viewport and is capped", () => {
@@ -56,6 +56,19 @@ describe("sheet swipe", () => {
   it("rubber-bands upward pulls and follows downward ones", () => {
     expect(dragOffset(80)).toBe(80);
     expect(dragOffset(-100)).toBeCloseTo(-12, 5);
+  });
+});
+
+describe("releaseVelocity", () => {
+  it("keeps the velocity of a gesture still in motion and drops it after the finger rests", () => {
+    expect(releaseVelocity(2, 10)).toBe(2);
+    expect(releaseVelocity(2, 80)).toBe(2);
+    expect(releaseVelocity(2, 81)).toBe(0);
+    expect(releaseVelocity(2, 400)).toBe(0);
+  });
+  it("a short pull held still no longer dismisses, but the same pull flicked does", () => {
+    expect(shouldDismiss(40, releaseVelocity(2, 400))).toBe(false);
+    expect(shouldDismiss(40, releaseVelocity(2, 10))).toBe(true);
   });
 });
 

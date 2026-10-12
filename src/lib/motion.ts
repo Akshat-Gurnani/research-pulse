@@ -41,6 +41,9 @@ export const dragOffset = (dy: number) => (dy < 0 ? dy * 0.12 : dy);
 /** Dismiss when dragged far enough, or flicked fast after a short pull (velocity in px/ms). */
 export const shouldDismiss = (dy: number, velocity: number, distance = 110, flick = 0.6) => dy > distance || (dy > 30 && velocity > flick);
 
+/** A flick only counts if the finger was still moving when it lifted: velocity expires after a short idle. */
+export const releaseVelocity = (v: number, idleMs: number, maxIdleMs = 80) => (idleMs > maxIdleMs ? 0 : v);
+
 /** Reading progress 0..1 through the page. */
 export function scrollProgress(scrollY: number, docHeight: number, viewHeight: number): number {
   const max = Math.max(1, docHeight - viewHeight);

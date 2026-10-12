@@ -5,7 +5,7 @@ import { RunControls } from "./RunControls";
 import { useSetWeek } from "./Shell";
 import { CountUp } from "./fx/CountUp";
 import { setFx } from "./fx/signals";
-import { dragOffset, shouldDismiss } from "@/lib/motion";
+import { dragOffset, releaseVelocity, shouldDismiss } from "@/lib/motion";
 import {
   SEGMENTS, VERDICTS, VERDICT_LABEL, authorsLine, buildView, cleanFinding, evidenceLabel, numberSegments,
   plural, ringArcs, shortTitle, weekLabel, type Filter, type PaperView,
@@ -54,7 +54,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
   const dragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("button")) return;
     drag.current = { y0: e.clientY, dy: 0, v: 0, ly: e.clientY, lt: performance.now() };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not every pointer can be captured; dragging still works */ }
     if (sheetRef.current) sheetRef.current.style.transition = "none";
   };
   const dragMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -70,7 +70,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
     const d = drag.current; drag.current = null;
     if (sheetRef.current) { sheetRef.current.style.transition = ""; sheetRef.current.style.transform = ""; }
     if (scrimRef.current) scrimRef.current.style.opacity = "";
-    if (d && shouldDismiss(d.dy, d.v)) close();
+    if (d && shouldDismiss(d.dy, releaseVelocity(d.v, performance.now() - d.lt))) close();
   };
 
   const openPaper = useCallback((id: string) => {
