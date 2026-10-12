@@ -3,7 +3,7 @@
 Legend: [x] already in this repo (tested or type-checked) · [ ] you do it · (needs keys) cannot be verified without real credentials.
 
 ## Phase 0: accounts and decisions (30 min, do first)
-- [ ] Create Supabase project; run `supabase/migrations/0001_init.sql` in the SQL editor. Check the Advisors tab shows no "RLS disabled" warnings.
+- [x] Create a Neon project; run `db/migrations/0001_init.sql` (SQL editor or `psql "$DATABASE_URL" -f ...`). Check every table has RLS on (`select tablename from pg_tables where schemaname='public' and not rowsecurity;` returns nothing).
 - [ ] Create a Gemini API key restricted to the Generative Language API. Open aistudio.google.com/rate-limit and note your real per-model limits.
 - [ ] **Decide email path:** own a domain -> verify it in Resend. No domain -> Resend to your own address only, or Gmail SMTP app password (`GMAIL_USER`, `GMAIL_APP_PASSWORD`). Set `RECIPIENT_EMAIL`.
 - [ ] **Email the examiner:** does "Gemini Flash" include Flash-Lite? Until answered set `ALLOW_FLASH_LITE=0`.

@@ -4,13 +4,19 @@
 
 ---
 
+## Revision note (12 October 2026): persistence moved from Supabase to Neon
+
+Everything below was researched against Supabase and has been updated to Neon where it described the database. What changed and why: Supabase project creation through the available connector was blocked by a cost-confirmation step, and the app only needs plain Postgres, so persistence moved to Neon Postgres behind a small query builder (`src/lib/db.ts`). The pipeline, the page ladder and the idempotency design are unchanged. Neon-specific platform limits (storage and compute quotas, long-inactivity policy) were **not** researched and are marked UNVERIFIED where they appear. Supabase-only features (Auth magic link, pg_cron, PostgREST) are not used.
+
+---
+
 ## 1. Verdict
 
-The current component map is a clean happy-path pipeline with **no memory and no second chance**. Every stage assumes one trigger fires on time, arXiv returns the newest papers, Gemini answers within an unpublished quota, Resend can email the consultant, and Supabase is awake. Each of those assumptions is contradicted by documentation or by a test in the notes. The single most damaging design choice is the weekly "one run does everything" shape: if any link fails on Monday, the examiner sees an empty site and Kavita gets nothing. The fix is structural, not cosmetic. Persist raw and derived data, ingest daily, make the Monday step a short idempotent "assemble and deliver" job that many independent triggers can call, and let the website read only from stored data through a four-rung fallback ladder that ends in a committed seed brief. All of this stays inside the exam rules: Gemini Flash-family models only (no Claude API anywhere), Vercel hosting, a public URL, a GitHub repo and a Components Map.
+The current component map is a clean happy-path pipeline with **no memory and no second chance**. Every stage assumes one trigger fires on time, arXiv returns the newest papers, Gemini answers within an unpublished quota, Resend can email the consultant, and the database is awake. Each of those assumptions is contradicted by documentation or by a test in the notes. The single most damaging design choice is the weekly "one run does everything" shape: if any link fails on Monday, the examiner sees an empty site and Kavita gets nothing. The fix is structural, not cosmetic. Persist raw and derived data, ingest daily, make the Monday step a short idempotent "assemble and deliver" job that many independent triggers can call, and let the website read only from stored data through a four-rung fallback ladder that ends in a committed seed brief. All of this stays inside the exam rules: Gemini Flash-family models only (no Claude API anywhere), Vercel hosting, a public URL, a GitHub repo and a Components Map.
 
 **Top five loopholes by severity** (full register in section 2):
 
-1. **No durable serving layer or fallback (L01).** If the page needs live calls, or Supabase Free pauses after about 7 days of low activity, a grader sees an empty or erroring page. A weekly-only workload sits exactly at the pause threshold ([Supabase pausing](https://supabase.com/docs/guides/platform/free-project-pausing.md); [V]).
+1. **No durable serving layer or fallback (L01).** If the page needs live calls, or the free-tier database is cold or unreachable, a grader sees an empty or erroring page. Neon's free compute suspends when idle and wakes on the next connection; the first query after idle took about 1.5 s in this build ([R], measured 11 Oct 2026). Neon's long-inactivity policy for free projects was not re-checked and is treated as UNVERIFIED.
 2. **A single, unreliable trigger (L02).** GitHub `schedule` runs have been reported 8 to 14.5 hours late and skipped ([GitHub #201738](https://github.com/orgs/community/discussions/201738)), public-repo schedules auto-disable after 60 days idle, and Vercel never retries a failed cron and may deliver duplicates ([Vercel cron docs](https://vercel.com/docs/cron-jobs/manage-cron-jobs)).
 3. **The "last 7 days" arXiv window is wrong on a Monday (L03).** The API filters only on submission time and newest papers are invisible until announced. On Sunday 11 Oct a window of 9 to 11 Oct returned 0 results (TESTED, [S]). A Monday run silently loses 2 to 3 days and mislabels the rest.
 4. **Gemini is an unquantified single point of failure (L04).** Free-tier limits are unpublished (one forum post reports about 20 requests/day for `gemini-3.8-flash`, unverified, [forum](https://discuss.ai.google.dev/t/gemini-3-8-flash-free-tier-20-rpd-is-too-limited-for-practical-evaluation/180609)), 503 "high demand" lasted hours to days in August 2026, and model IDs churn (3.5 and 3.7 Flash were deprecated on 8 Oct 2026) ([Deprecations](https://ai.google.dev/gemini-api/docs/deprecations); [G]).
@@ -41,7 +47,7 @@ Likelihood (L) and Impact (I): H high, M medium, Lo low. Ordered by severity (L 
 
 | ID | Component | What breaks | L | I | Fix | Src |
 |---|---|---|---|---|---|---|
-| L01 | Storage and serving | Page or run depends on live calls or one DB. Supabase Free pauses after about 7 days of low activity, has no automatic backups. Empty page at grading | M-H | Critical | Page reads stored data only: DB, then Blob snapshot, then committed seed. Daily keep-alive with a real `select`. Weekly JSON export | V, S, G |
+| L01 | Storage and serving | Page or run depends on live calls or one DB. Free-tier Postgres compute suspends when idle (cold start about 1.5 s measured) and the point-in-time history window is short (6 h on this project, as reported by the API at creation). Empty page at grading | M-H | Critical | Page reads stored data only: DB, then Blob snapshot, then committed seed. Daily keep-alive with a real `select`. Weekly JSON export | V, S, G |
 | L02 | Scheduler | Sole GitHub cron: reported 8 to 14.5 h late, skipped days, 60-day idle auto-disable, default-branch only. Vercel: no retry, best-effort, possible duplicates, no log if delivery fails | H | Critical | Vercel Cron primary, GitHub Actions secondary at off-peak minutes, daily catch-up cron, optional external pinger, all calling one idempotent route | V, D |
 | L03 | arXiv window | `submittedDate` only; newest 2 to 3 days invisible until announcement. Window 9 to 11 Oct returned 0 (TESTED). Overlaps next run. `lastUpdatedDate` silently rewritten to `submittedDate` (TESTED) | H | H | Daily ingest, announcement-aligned window defined by `first_seen_at`, filter on `published`, version-aware dedupe | S |
 | L04 | Gemini | Free quota unpublished (about 20 RPD for 3.8 Flash reported once, unverified); 503 outages of hours to days; 429 daily vs per-minute; no budget, no fallback; in-memory work lost at timeout | H | Critical | Call budget, batching, spread scoring over days, retry then model chain, cache by paper+prompt version, persist per step | G |
@@ -107,11 +113,11 @@ Likelihood (L) and Impact (I): H high, M medium, Lo low. Ordered by severity (L 
 
 | Component | Primary | Fallback(s) in order | Failure trigger (switch condition) |
 |---|---|---|---|
-| Scheduler | Vercel Cron: daily job (02:xx UTC) and Monday assemble job (00:xx UTC), Production only | 1) GitHub Actions at off-peak minutes (Mon 00:17 and 01:47 UTC) plus `workflow_dispatch`; 2) the daily Vercel job doubles as catch-up; 3) optional external pinger or Supabase pg_cron (availability on Free UNVERIFIED) | No `trigger_events` row of source `vercel` by 00:45 UTC Monday, or brief status not `published` by the catch-up |
+| Scheduler | Vercel Cron: daily job (02:xx UTC) and Monday assemble job (00:xx UTC), Production only | 1) GitHub Actions at off-peak minutes (Mon 00:17 and 01:47 UTC) plus `workflow_dispatch`; 2) the daily Vercel job doubles as catch-up; 3) optional external pinger (a Postgres-side cron was dropped with the move to Neon; GitHub Actions is the implemented second scheduler) | No `trigger_events` row of source `vercel` by 00:45 UTC Monday, or brief status not `published` by the catch-up |
 | Orchestration | State-table worker with leases and 240 s budget | `after()` self-continuation; next trigger resumes from the table | Lease expired (8 min) or budget exhausted |
 | arXiv ingest | arXiv API, serialised, >= 3.1 s spacing, descriptive User-Agent, broad category queries paged <= 200 | arXiv RSS/Atom for the latest day; stored previous days; HF Daily Papers per weekday (undocumented, optional); OpenAlex or S2 **with free keys** | HTTP non-2xx, timeout 10 s after 3 retries (5/20/60 s plus jitter), `Error` entry, HTML body, totalResults 0 or < 25% of 4-week median outside expected-empty days |
 | Attention signals | HF daily papers (upvotes, linked repos) and HN Algolia by arXiv ID | Drop signal; neutral percentile 50 and "no data" tag | Any error; never blocks publish |
-| Persistence | Supabase Postgres via supabase-js over HTTPS (or pooler port 6543, `prepare:false`, `max:1`) | Vercel Blob `latest-brief.json` written after each publish; committed `data/seed-brief.json` | Read error, timeout or paused project |
+| Persistence | Neon Postgres via `@neondatabase/serverless` over HTTPS with the pooled connection string, behind a thin query builder in `src/lib/db.ts` | Vercel Blob `latest-brief.json` written after each publish; committed `data/seed-brief.json` | Read error, timeout or unreachable database |
 | LLM scoring and summary | `gemini-3.8-flash`, `thinking_level: low`, JSON schema + Zod | `gemini-3.6-flash`, then `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite` (labelled, subject to examiner OK) | 3 retries per model on 408/429-rate/5xx; daily-quota 429 or 404 skips immediately; 400/402/403 never retried |
 | Validation gate | Deterministic code checks plus schema | Drop or regenerate once, then drop item and flag | Any check fails twice |
 | Web | Next.js pages reading DB | Blob snapshot, then seed brief, banner states | DB read error or stale data |
@@ -139,7 +145,7 @@ flowchart TB
     T1["Vercel Cron: daily 02:xx UTC"]
     T2["Vercel Cron: Monday 00:xx UTC"]
     T3["GitHub Actions: Mon 00:17 and 01:47 UTC, plus manual dispatch"]
-    T4["Optional: external pinger or pg_cron"]
+    T4["Optional: external pinger"]
     T5["Admin Run now / Test mode"]
   end
 
@@ -170,7 +176,7 @@ flowchart TB
   end
 
   subgraph STORE["Persistence"]
-    DB[("Supabase Postgres + RLS")]
+    DB[("Neon Postgres, RLS on")]
     BL[("Vercel Blob: latest-brief.json")]
     SD[("Repo: seed-brief.json, default domains")]
   end
@@ -314,21 +320,21 @@ Resend Free allows 3,000 emails/month, 100/day and 3 custom domains ([pricing](h
 
 Brevo is not a no-domain option: it requires domain authentication and cannot authenticate gmail.com ([Brevo help](https://help.brevo.com/hc/en-us/articles/17286219877778)), and also needs account approval before the first send ([pricing](https://www.brevo.com/pricing/)). SendGrid's free plan is gone ([Twilio](https://www.twilio.com/en-us/changelog/sendgrid-free-plan)).
 
-### 4.6 Resolving tension (e): Supabase pausing and daily keep-alive
+### 4.6 Resolving tension (e): database cold start and daily keep-alive
 
-Free projects with low activity over 7 days can be paused; a few requests per day is enough to avoid it; API calls and dashboard visits count; no automatic backups ([pausing docs](https://supabase.com/docs/guides/platform/free-project-pausing.md); [pricing](https://supabase.com/pricing)). Weekly traffic alone is therefore at risk.
+Free-tier Neon computes suspend when idle and resume on the next connection. In this build the first query after a long idle took about 1.5 s and later queries were sub-second ([R], 11 Oct 2026), so cold starts are a latency cost, not an outage. Neon's policy for projects left idle for weeks or months was not researched here; treat it as UNVERIFIED and keep the daily write below.
 
-- The **daily job** performs a real `select` and one tiny write (`source_health` or `heartbeats` upsert) every day, so it is both a keep-alive and a liveness record.
-- `/api/health` does a `select 1` through supabase-js; the external uptime check hits it too.
-- Pages wrap DB reads in try/catch and fall back to Blob then seed, so a paused database yields rung 2 or 3 rather than an error.
-- Weekly export of key tables to Blob as JSON (free plan has no backups). Restore from pause is possible for up to a year via "Resume project".
+- The **daily job** performs a real `select` and one tiny write (`heartbeats` upsert) every day, so it is both a keep-alive and a liveness record. Verified firing from Vercel Cron on 12 Oct 2026.
+- `/api/health` runs a `select` through the same query builder; an external uptime check can hit it too.
+- Pages wrap DB reads in try/catch and fall back to Blob then seed, so an unreachable database yields rung 2 or 3 rather than an error. The committed seed holds the real W42 brief and a test (`tests/seed.test.ts`) keeps it that way.
+- Recovery: Neon keeps a short point-in-time history window (6 h reported on this project). A weekly JSON export of key tables to Blob is still advisable and is not implemented.
 - Avoid Vercel Edge Config for mutable data (100 free writes per month, [Hobby plan](https://vercel.com/docs/plans/hobby)).
 
 ---
 
 ## 5. Data model
 
-Postgres on Supabase; RLS enabled on **every** table, no anon policies except an optional `SELECT` on a published-brief view; all writes via the server-side secret key.
+Postgres on Neon; RLS enabled on **every** table with no policies. The application connects only from the server, as the database owner role, using `DATABASE_URL` (never `NEXT_PUBLIC_`). There is no public data API, so no table is reachable from a browser. Live check on 11 Oct 2026: 18 of 18 tables had RLS on.
 
 ```sql
 -- configuration
@@ -437,11 +443,11 @@ Threat: any paper author. Hidden-prompt cases in about 17 to 18 arXiv papers wer
 
 | Area | Control | Source |
 |---|---|---|
-| `/settings` admin gate | Hobby has no platform Password Protection. Use `ADMIN_PASSWORD` login, HMAC-signed HttpOnly, Secure, SameSite=Strict cookie (separate `SESSION_SECRET`), enforced in middleware **and** re-checked inside every mutating handler; Origin check on POST; login throttle (DB counter). Stronger option: Supabase Auth magic link allow-list of one email | [V], [Deployment Protection](https://vercel.com/docs/deployment-protection) |
+| `/settings` admin gate | Hobby has no platform Password Protection. Use `ADMIN_PASSWORD` login, HMAC-signed HttpOnly, Secure, SameSite=Strict cookie (separate `SESSION_SECRET`), enforced in middleware **and** re-checked inside every mutating handler; Origin check on POST; login throttle (DB counter). Stronger option (not implemented): an email magic-link allow-list of one address | [V], [Deployment Protection](https://vercel.com/docs/deployment-protection) |
 | Cron route auth | `Authorization: Bearer ${CRON_SECRET}`, constant-time compare, fail closed if unset, accept `CRON_SECRET_PREVIOUS` during rotation; no cookies; GitHub passes the same secret from Actions secrets | [Managing cron jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs), [V] |
-| Public repo secrets | Nothing secret in git; `.env.example` with names only; `.gitignore`; no `NEXT_PUBLIC_` prefix on secrets; GitHub Actions secrets `APP_URL`, `CRON_SECRET` only, `permissions: contents: read`, never echo; redacted logs; pre-submission `git log -p` scan; rotate Gemini and Supabase keys after the exam | [V], [G] |
+| Public repo secrets | Nothing secret in git; `.env.example` with names only; `.gitignore`; no `NEXT_PUBLIC_` prefix on secrets; GitHub Actions secrets `APP_URL`, `CRON_SECRET` only, `permissions: contents: read`, never echo; redacted logs; pre-submission `git log -p` scan; rotate the Gemini, Resend, Neon and Vercel credentials after the exam | [V], [G] |
 | Gemini key | Restrict to Generative Language API, billing alert or spend cap, spare key; unrestricted standard keys are rejected since 7 May 2026; leaked keys return "reported as leaked" | [API key](https://ai.google.dev/gemini-api/docs/api-key), [G] |
-| Row Level Security | RLS on every table; with RLS on and no policies the publishable key reaches nothing; secret key maps to `service_role` and stays server-side; recipients and send_log deny-all | [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) |
+| Row Level Security | RLS on every table with no policies; the app connects as the owner role from the server only (table owners bypass RLS, so RLS is defence in depth, not the access control); no Data API or PostgREST layer is exposed; recipients and send_log never leave the server | This build: `tests/db.test.ts` asserts RLS on all tables; live Neon query showed 18/18 |
 | Deployment Protection | Submit the production alias `https://<project>.vercel.app`, not a preview or hash URL. Standard Protection leaves the production domain public; "All Deployments" locks it. Since 9 Sep 2026 Vercel Authentication can protect production on every plan, but it is off unless set, and a team default may apply. Test in a private window and with `curl -I` from outside; do not use `VERCEL_URL` as the public URL; if protection is ever on, automation needs the bypass header | [Deployment Protection](https://vercel.com/docs/deployment-protection), [changelog](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan) |
 | Input validation | Domains: max 10, 3 to 60 characters, allow-listed characters, trim, case-normalise, dedupe, reject URLs and HTML; categories from an allow-list; React escaping, no `dangerouslySetInnerHTML`; domain strings passed to Gemini as delimited data, never as instructions; optimistic concurrency via `updated_at` | [V] |
 | Abuse limits | Settings changes never trigger processing; only secret-protected routes can; hard `max_calls_per_run` and per week; run-now needs admin cookie plus 1-hour cooldown; Hobby WAF allows up to 3 custom rules (rate-limit rule availability UNVERIFIED) | [V] |
@@ -479,7 +485,7 @@ Threat: any paper author. Hidden-prompt cases in about 17 to 18 arXiv papers wer
 | Quota exhaustion | Set call ceiling low | Publishes partial; no exceed | `llm_budget` row |
 | Duplicate trigger | Fire Vercel and GitHub routes concurrently; replay the same request | One brief, one email, one `send_log` row; second call logged as no-op | `trigger_events` showing both |
 | Missed primary | Disable Vercel Monday cron | GitHub or catch-up completes before 09:00 IST | Timeline screenshot |
-| Supabase pause | Point at a dead URL | Pages serve Blob then seed with banner; no 500 | Screenshots |
+| Database down | Point `DATABASE_URL` at a dead host | Pages serve Blob then seed with banner; no 500 | Screenshots |
 | Email failure | Primary provider invalid; bounce address | Failover; `send_log` provider recorded; bounce marks suppressed | Log rows |
 | Auth tests | No/incorrect cron secret; no admin cookie; invalid domains; oversized list | 401/403/400; no Gemini calls made | curl transcript |
 | Public access | Private window, phone, `curl -I` on production alias | 200 without Vercel login | Screenshot |
@@ -496,7 +502,7 @@ Effort figures are my rough estimates (hours of focused work), not sourced.
 
 | Tier | Item | Effort | Why |
 |---|---|---|---|
-| **Must-have** | Supabase tables + RLS; `domains` + gated `/settings` | 4 to 6 h | Requirement: adjustable domains |
+| **Must-have** | Neon tables + RLS; `domains` + gated `/settings` | 4 to 6 h | Requirement: adjustable domains |
 | | Serialised arXiv fetcher with validators and daily ingest; seed backfill | 4 to 6 h | Core data and live-data rule |
 | | Gemini scoring + summarising with one model, schema/Zod, id-keyed batches, call budget, cache | 5 to 7 h | Core AI task |
 | | Model chain 3.8 -> 3.6 (+ Flash-Lite pending examiner) with retry rules | 1 to 2 h | Cheap, covers outages |
@@ -533,7 +539,7 @@ Effort figures are my rough estimates (hours of focused work), not sourced.
 | 6 | Oct 12 (and later) deferred-mailing dates | May remove a batch from W43 | Watch the Monday 20:00 ET batch; log result; read [arXiv availability](https://info.arxiv.org/help/availability.html) |
 | 7 | Does Hobby accept two cron entries (daily and Monday weekly)? | Core scheduling | Test deploy; read deployment output and Settings > Cron Jobs |
 | 8 | Vercel Deployment Protection state and team default | Graders may hit a login wall | Settings > Deployment Protection; private-window test of the production alias; confirm cron/GitHub calls return JSON, not a login page |
-| 9 | Is Supabase pg_cron/pg_net enabled on Free? | Optional third trigger | Dashboard > Integrations > Cron; skip if absent |
+| 9 | ~~Is Supabase pg_cron/pg_net enabled on Free?~~ Obsolete: persistence moved to Neon | The second scheduler is GitHub Actions, verified (run 38240159690 returned 200 / already-published on 12 Oct 2026) | None |
 | 10 | Does a successful scheduled Action count as "activity" for the 60-day rule? | GitHub backup silently stops | Treat as unverified; add a periodic commit or accept GitHub as backup only |
 | 11 | Exact `@google/genai` timeout option, `temperature: 0` acceptance on 3.8 | Reliability code | Read SDK README; test once and remove if rejected |
 | 12 | Model ID status in submission week | Deprecations can change within days | Re-read [Deprecations](https://ai.google.dev/gemini-api/docs/deprecations) and [Models](https://ai.google.dev/gemini-api/docs/models) the day before submitting |
