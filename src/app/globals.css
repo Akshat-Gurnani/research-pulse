@@ -18,7 +18,7 @@
   --skim-bg:rgba(120,120,128,.16); --skim-fg:#4F4F56; --skim-dot:#A1A1A8; --skim-ring:rgba(120,120,128,.16);
   --fc-bg:linear-gradient(160deg,rgba(255,236,214,.75),rgba(255,255,255,.45)); --fc-edge:rgba(255,255,255,.75);
   --fc-shadow:0 12px 36px rgba(180,90,20,.12),inset 0 1px 0 rgba(255,255,255,.9); --fc-label:#B45309; --fc-dot:#FF9500; --fc-why:#4A4A52;
-  --scrim:rgba(20,22,35,.28);
+  --scrim:rgba(20,22,35,.28); --spot:rgba(255,255,255,.55); --ease:cubic-bezier(.2,.8,.2,1);
   --sheet:rgba(250,250,252,.82); --sheet-edge:rgba(255,255,255,.8); --sheet-shadow:0 -20px 60px rgba(20,30,70,.18);
   --grabber:rgba(60,60,67,.3); --circle:rgba(120,120,128,.14); --circle-icon:#3A3A40;
   --why-bg:rgba(10,132,255,.09); --why-label:#0058D0;
@@ -45,7 +45,7 @@
   --skim-bg:rgba(142,142,147,.22); --skim-fg:#D1D1D6; --skim-dot:#8E8E93; --skim-ring:rgba(142,142,147,.24);
   --fc-bg:linear-gradient(160deg,rgba(255,149,0,.24),rgba(28,28,30,.55) 60%); --fc-edge:rgba(255,170,80,.22);
   --fc-shadow:0 16px 40px rgba(255,110,0,.10),inset 0 1px 0 rgba(255,255,255,.08); --fc-label:#FFB340; --fc-dot:#FF9F0A; --fc-why:#C7C7CC;
-  --scrim:rgba(0,0,0,.6);
+  --scrim:rgba(0,0,0,.6); --spot:rgba(120,150,255,.12);
   --sheet:rgba(22,22,24,.88); --sheet-edge:rgba(255,255,255,.10); --sheet-shadow:0 -20px 60px rgba(0,0,0,.7);
   --grabber:rgba(255,255,255,.25); --circle:rgba(255,255,255,.10); --circle-icon:#D1D1D6;
   --why-bg:rgba(10,132,255,.16); --why-label:#4DA3FF;
@@ -65,12 +65,14 @@ button{font:inherit;color:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* animated backdrop */
-.backdrop{position:fixed;inset:0;overflow:hidden;z-index:0;background:var(--backdrop);pointer-events:none}
-.blob{position:absolute;border-radius:50%}
-.blob.b1{width:52vw;height:52vw;left:-12vw;top:-16vw;background:var(--b1);opacity:var(--b1o);filter:blur(90px);animation:drift1 26s ease-in-out infinite alternate}
-.blob.b2{width:44vw;height:44vw;right:-10vw;top:10vh;background:var(--b2);opacity:var(--b2o);filter:blur(90px);animation:drift2 30s ease-in-out infinite alternate}
-.blob.b3{width:46vw;height:46vw;left:20vw;bottom:-22vw;background:var(--b3);opacity:var(--b3o);filter:blur(100px);animation:drift3 34s ease-in-out infinite alternate}
-.blob.b4{width:30vw;height:30vw;right:12vw;bottom:6vh;background:var(--b4);opacity:var(--b4o);filter:blur(90px);animation:drift1 28s ease-in-out infinite alternate-reverse}
+.backdrop{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(60vw 50vw at 8% -6%,color-mix(in srgb,var(--b1) 30%,transparent),transparent 70%),
+    radial-gradient(48vw 44vw at 96% 24%,color-mix(in srgb,var(--b2) 26%,transparent),transparent 70%),
+    radial-gradient(52vw 46vw at 36% 104%,color-mix(in srgb,var(--b3) 24%,transparent),transparent 70%),
+    var(--backdrop)}
+.fx{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 1.4s ease}
+.fx.on{opacity:1}
 @keyframes drift1{0%{transform:translate(0,0) scale(1)}100%{transform:translate(12vw,8vh) scale(1.15)}}
 @keyframes drift2{0%{transform:translate(0,0) scale(1.1)}100%{transform:translate(-10vw,12vh) scale(.9)}}
 @keyframes drift3{0%{transform:translate(0,0)}100%{transform:translate(8vw,-10vh) scale(1.2)}}
@@ -230,3 +232,56 @@ label{display:block;margin:12px 0 4px;font-size:13px;color:var(--muted)}
 .dom{border-radius:20px;padding:16px;margin:0}
 .fields{display:grid;gap:10px;grid-template-columns:1fr}
 @media (min-width:640px){.fields{grid-template-columns:1fr 1fr}}
+
+/* ---- dynamics ---- */
+/* glass surfaces: a spotlight that follows the cursor */
+.glass,.fcard{position:relative}
+.glass::after,.fcard::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),var(--spot),transparent 62%)}
+.glass:hover::after,.fcard:hover::after{opacity:1}
+.group.glass{isolation:isolate}
+
+/* nav: sliding pill + reading progress */
+.links{position:relative}
+.links a{position:relative;z-index:1}
+.links a:hover,.links a[aria-current=page]{background:transparent}
+.nav-pill{position:absolute;top:0;left:0;border-radius:12px;background:var(--nav-on);pointer-events:none;
+  transition:transform .5s cubic-bezier(.32,.72,0,1),width .5s cubic-bezier(.32,.72,0,1),height .5s cubic-bezier(.32,.72,0,1)}
+.nav{position:relative}
+.nav-progress{position:absolute;left:18px;right:18px;bottom:0;height:2px;border-radius:2px;pointer-events:none;
+  background:linear-gradient(90deg,var(--flag-dot),var(--read-dot));transform-origin:left;transform:scaleX(var(--p,0));opacity:.9}
+
+/* hero: slow light sweep across the title */
+.hero h1{background:linear-gradient(100deg,var(--text) 0%,var(--text) 42%,var(--read-fg) 50%,var(--text) 58%,var(--text) 100%);background-size:260% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--text);animation:sheen 9s ease-in-out infinite,fadeUp .7s var(--ease) both}
+@keyframes sheen{0%,12%{background-position:110% 0}60%,100%{background-position:-10% 0}}
+
+/* scroll reveal: sections below the fold arm themselves, then settle in */
+.armed{opacity:0;transform:translateY(26px) scale(.985);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.armed.in{opacity:1;transform:none}
+.armed .row{animation-play-state:paused}
+.armed.in .row{animation-play-state:running}
+
+/* richer micro-interactions */
+.tile{transition:background .25s,transform .25s cubic-bezier(.32,.72,0,1),box-shadow .25s}
+.tile:hover{transform:translateY(-2px)}
+.row .chev{transition:transform .3s cubic-bezier(.32,.72,0,1),stroke .2s}
+.row:hover .chev{transform:translateX(4px);stroke:var(--text)}
+.row:hover .dot{transform:scale(1.18)}
+.dot{transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.cta{transition:transform .2s,box-shadow .3s,background .2s}
+.cta:hover{box-shadow:0 12px 36px rgba(10,132,255,.55)}
+
+/* flagged rail: cards scale toward the centre as they scroll (where supported) */
+@supports (animation-timeline:view(inline)){
+  .rail .fcard{animation:cardfocus linear both;animation-timeline:view(inline);animation-range:entry 0% exit 100%}
+}
+@keyframes cardfocus{0%{transform:scale(.92);opacity:.55}50%{transform:scale(1);opacity:1}100%{transform:scale(.92);opacity:.55}}
+
+/* sheet drag */
+.dragzone{touch-action:none;cursor:grab;user-select:none}
+.dragzone:active{cursor:grabbing}
+.sheetbody .callout,.sheetbody .findlist li{animation:fadeUp .55s var(--ease) both}
+.sheet.on .sheetbody .callout.why{animation-delay:.08s}
+.sheet.on .sheetbody .finds{animation:fadeUp .55s .16s var(--ease) both}
+.sheet.on .sheetbody .callout.cav{animation-delay:.24s}

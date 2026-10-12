@@ -1,13 +1,17 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Brief } from "@/lib/types";
 import { RunControls } from "./RunControls";
 import { useSetWeek } from "./Shell";
+import { CountUp } from "./fx/CountUp";
+import { setFx } from "./fx/signals";
+import { dragOffset, shouldDismiss } from "@/lib/motion";
 import {
   SEGMENTS, VERDICTS, VERDICT_LABEL, authorsLine, buildView, cleanFinding, evidenceLabel, numberSegments,
   plural, ringArcs, shortTitle, weekLabel, type Filter, type PaperView,
 } from "@/lib/view";
 
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const fmtUtc = (iso: string) => new Date(iso).toUTCString().slice(5, 22) + " UTC";
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -19,6 +23,9 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
   const [mounted, setMounted] = useState(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const closeBtn = useRef<HTMLButtonElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const scrimRef = useRef<HTMLDivElement | null>(null);
+  const drag = useRef<{ y0: number; dy: number; v: number; ly: number; lt: number } | null>(null);
 
   useEffect(() => { setWeek(weekLabel(brief.week_key)); return () => setWeek(""); }, [brief.week_key, setWeek]);
   useEffect(() => { const t = setTimeout(() => setMounted(true), 150); return () => clearTimeout(t); }, []);
@@ -27,6 +34,44 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
   const byId = useMemo(() => new Map(view.all.map((p) => [p.card.arxiv_id, p])), [view.all]);
   const total = view.all.length;
   const rings = ringArcs(view.counts);
+  const full = useMemo(() => buildView(brief, "all").counts, [brief]);
+
+  // tell the background what this page is about: verdict mix, and which verdict is being filtered to
+  useEffect(() => { setFx({ counts: full }); }, [full]);
+  useEffect(() => { setFx({ focus: filter === "all" ? null : filter }); return () => setFx({ focus: null }); }, [filter]);
+
+  // reveal sections as they scroll into view (only elements below the fold are hidden first, so nothing flashes)
+  useIsoLayoutEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    const vh = window.innerHeight;
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
+    for (const el of els) if (el.getBoundingClientRect().top > vh * 0.9) { el.classList.add("armed"); io.observe(el); }
+    return () => io.disconnect();
+  }, [filter, brief]);
+
+  // swipe the sheet down to dismiss (pointer events, so mouse, touch and pen all work)
+  const dragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    drag.current = { y0: e.clientY, dy: 0, v: 0, ly: e.clientY, lt: performance.now() };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (sheetRef.current) sheetRef.current.style.transition = "none";
+  };
+  const dragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current; if (!d) return;
+    const now = performance.now();
+    d.dy = e.clientY - d.y0;
+    d.v = now > d.lt ? (e.clientY - d.ly) / (now - d.lt) : d.v;
+    d.ly = e.clientY; d.lt = now;
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${dragOffset(d.dy)}px)`;
+    if (scrimRef.current) scrimRef.current.style.opacity = String(Math.max(0.25, 1 - Math.max(0, d.dy) / 420));
+  };
+  const dragEnd = () => {
+    const d = drag.current; drag.current = null;
+    if (sheetRef.current) { sheetRef.current.style.transition = ""; sheetRef.current.style.transform = ""; }
+    if (scrimRef.current) scrimRef.current.style.opacity = "";
+    if (d && shouldDismiss(d.dy, d.v)) close();
+  };
 
   const openPaper = useCallback((id: string) => {
     returnFocus.current = document.activeElement as HTMLElement | null;
@@ -75,7 +120,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
         <div className="rings" role="img" aria-label={`${view.counts.flag} flagged for client, ${view.counts.read} to read, ${view.counts.skim} to skim`}>
           <svg viewBox="0 0 148 148" width="148" height="148" aria-hidden>
             {rings.map((r, i) => (
-              <g key={r.verdict}>
+              <g key={r.verdict} style={{ opacity: filter === "all" || filter === r.verdict ? 1 : 0.22, transition: "opacity .45s" }}>
                 <circle cx="74" cy="74" r={r.r} fill="none" strokeWidth="13" style={{ stroke: `var(--${r.verdict}-ring)` }} />
                 <circle className="arc" cx="74" cy="74" r={r.r} fill="none" strokeWidth="13" strokeLinecap="round"
                   strokeDasharray={r.circumference.toFixed(1)}
@@ -87,13 +132,13 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
         </div>
         <div className="sumtext">
           <div>
-            <div className="big">{plural(total, "paper")} · {plural(view.domainCount, "domain")}</div>
+            <div className="big"><CountUp value={total} /> {total === 1 ? "paper" : "papers"} · <CountUp value={view.domainCount} /> {view.domainCount === 1 ? "domain" : "domains"}</div>
             <div className="small">About {brief.reading_minutes} min read</div>
           </div>
           <div className="tiles">
             {VERDICTS.map((v) => (
               <button key={v} type="button" className={`tile ${v}`} aria-pressed={filter === v} onClick={() => setFilter((f) => (f === v ? "all" : v))}>
-                <span className="n">{view.counts[v]}</span>
+                <span className="n"><CountUp value={view.counts[v]} /></span>
                 <span className="l">{VERDICT_LABEL[v]}</span>
               </button>
             ))}
@@ -112,7 +157,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
       </div>
 
       {filter === "all" && view.flagged.length > 0 && (
-        <section className="flagged" aria-label="Flagged for client">
+        <section className="flagged" aria-label="Flagged for client" data-reveal>
           <div className="sechead"><h2>Flagged for client</h2><span>Swipe</span></div>
           <div className="rail">
             {view.flagged.map((p) => (
@@ -127,7 +172,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
       )}
 
       {view.domains.map((d) => (
-        <section key={d.id} id={`d-${d.id}`} className="domain" aria-label={d.name}>
+        <section key={`${filter}-${d.id}`} id={`d-${d.id}`} className="domain" aria-label={d.name} data-reveal>
           <div className="domhead"><h2>{d.name}</h2><span>{plural(d.papers.length, "paper")}</span></div>
           <div className="group glass">
             {d.papers.length === 0 && <p className="quiet">{d.note ?? "Nothing cleared the bar this week."}</p>}
@@ -152,9 +197,10 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
       ))}
       {total === 0 && <p className="empty">No papers in this brief.</p>}
 
-      <div className={`scrim${open ? " on" : ""}`} onClick={close} aria-hidden />
+      <div ref={scrimRef} className={`scrim${open ? " on" : ""}`} onClick={close} aria-hidden />
       <div className="sheetwrap">
-        <div className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-label={cur ? cur.card.title : "Paper details"} aria-hidden={!open}>
+        <div ref={sheetRef} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-label={cur ? cur.card.title : "Paper details"} aria-hidden={!open}>
+          <div className="dragzone" onPointerDown={dragStart} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}>
           <div className="grab" aria-hidden><i /></div>
           <div className="sheetbar">
             <span className="pos" aria-live="polite">{pi >= 0 ? `${pi + 1} of ${view.order.length}` : ""}</span>
@@ -169,6 +215,7 @@ export function BriefExperience({ brief, rung, stale, admin = false }: { brief: 
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M1 1l10 10M11 1L1 11" /></svg>
               </button>
             </div>
+          </div>
           </div>
           {cur && (
             <div className="sheetbody">
