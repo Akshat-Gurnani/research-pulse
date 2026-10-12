@@ -15,7 +15,9 @@ async function fromBlob(): Promise<Brief | null> {
 /** Four-rung read ladder: database -> blob snapshot -> committed seed. The page never calls arXiv or Gemini. */
 export async function loadBrief(weekKey?: string): Promise<{ brief: Brief; stale: boolean; rung: "db" | "blob" | "seed" }> {
   try {
-    let q = db().from("brief_runs").select("snapshot").eq("status", "published").not("snapshot", "is", null).order("published_at", { ascending: false }).limit(1);
+    // A snapshot exists only once a week has been published. Not filtering on status keeps the brief served
+    // while the same week is being regenerated (status is 'running' then).
+    let q = db().from("brief_runs").select("snapshot").not("snapshot", "is", null).order("published_at", { ascending: false }).limit(1);
     if (weekKey) q = db().from("brief_runs").select("snapshot").eq("week_key", weekKey).not("snapshot", "is", null).limit(1);
     const { data, error } = await q;
     if (!error && data?.[0]?.snapshot) { const b = data[0].snapshot as Brief; return { brief: { ...b, origin: "db" }, stale: ageDays(b) > STALE_DAYS, rung: "db" }; }

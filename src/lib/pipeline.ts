@@ -116,25 +116,30 @@ function makeBudget(weekKey: string): Budget {
   };
 }
 
-async function claim(w: BriefWindow): Promise<boolean> {
+async function claim(w: BriefWindow, regenerate = false): Promise<boolean> {
   await db().from("brief_runs").upsert({ week_key: w.weekKey, window_start: w.startSlot.toISOString(), window_end: w.endSlot.toISOString(), window_label: w.label }, { onConflict: "week_key", ignoreDuplicates: true });
   const nowIso = new Date().toISOString();
   const lease = new Date(Date.now() + LEASE_MIN * 60_000).toISOString();
   const { data } = await db().from("brief_runs").update({ status: "running", lease_expires: lease, started_at: nowIso, window_label: w.label })
-    .eq("week_key", w.weekKey).or(`status.in.(pending,waiting_batch,failed),and(status.eq.running,lease_expires.lt.${nowIso})`).select("week_key");
+    .eq("week_key", w.weekKey).or(`status.in.(pending,waiting_batch,failed${regenerate ? ",published" : ""}),and(status.eq.running,lease_expires.lt.${nowIso})`).select("week_key");
   return !!data?.length;
 }
 const release = (k: string, patch: Record<string, unknown>) => db().from("brief_runs").update({ lease_expires: null, ...patch }).eq("week_key", k);
 
-export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; ingestFirst?: boolean; force?: boolean } = {}): Promise<WeeklyResult> {
+export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; ingestFirst?: boolean; force?: boolean; regenerate?: boolean } = {}): Promise<WeeklyResult> {
   const w = briefWindow(now);
   const t0 = Date.now();
   const overBudget = () => Date.now() - t0 > TIME_BUDGET_MS;
+  let prevPublished = false;
   if (!opts.dryRun) {
-    const done = (await db().from("brief_runs").select("status").eq("week_key", w.weekKey).maybeSingle()).data?.status === "published";
-    if (done) return { weekKey: w.weekKey, status: "already-published" };
-    if (!(await claim(w))) return { weekKey: w.weekKey, status: "leased-elsewhere" };
+    prevPublished = (await db().from("brief_runs").select("status").eq("week_key", w.weekKey).maybeSingle()).data?.status === "published";
+    if (prevPublished && !opts.regenerate) return { weekKey: w.weekKey, status: "already-published" };
+    if (!(await claim(w, !!opts.regenerate))) return { weekKey: w.weekKey, status: "leased-elsewhere" };
   }
+  // Regenerating a published week: the previous brief and snapshot stay in place and stay served until the new one
+  // replaces them in a single update. If the new run does not publish, the week goes back to 'published'.
+  const keepGood = !!opts.regenerate && prevPublished;
+  const endStatus = (s: string) => (keepGood ? "published" : s);
   const budget = makeBudget(w.weekKey);
   try {
     if (opts.ingestFirst !== false) { try { await ingestDaily(now); } catch { /* stored data is still usable */ } }
@@ -145,7 +150,7 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
     // (reset brief_runs.status to 'pending' and run again once the batch is visible; scores and summaries are cached).
     const late = !!opts.force || now.getTime() - w.endSlot.getTime() > 90 * 60_000;
     const missingBatch = (sundayCount ?? 0) === 0;
-    if (missingBatch && !late && !opts.dryRun) { await release(w.weekKey, { status: "waiting_batch" }); return { weekKey: w.weekKey, status: "waiting_batch" }; }
+    if (missingBatch && !late && !opts.dryRun) { await release(w.weekKey, { status: endStatus("waiting_batch") }); return { weekKey: w.weekKey, status: "waiting_batch" }; }
 
     const domains = await activeDomains();
     const papers = await windowPapers(w);
@@ -175,7 +180,7 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
         if (rows.length) { await db().from("paper_scores").upsert(rows); rows.forEach((x) => cached.set(x.arxiv_id, x)); }
       } catch (e) { degraded = true; if (e instanceof BudgetExceeded) budgetGone = true; }
     });
-    if (timedOut) { await release(w.weekKey, { status: "pending", error_summary: "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
+    if (timedOut) { await release(w.weekKey, { status: endStatus("pending"), error_summary: keepGood ? "regeneration hit the time budget; previous brief kept" : "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
 
     // 3) per-domain selection, signals only for the shortlist
     const bySlug = new Map(domains.map((d) => [d.slug, d]));
@@ -213,7 +218,7 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
         const fresh = need.filter((id) => !cachedSum.has(id));
         const got = new Map<string, CardIn>(cachedSum);
         for (const part of chunk(fresh, 5)) {
-          if (overBudget()) { await release(w.weekKey, { status: "pending", error_summary: "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
+          if (overBudget()) { await release(w.weekKey, { status: endStatus("pending"), error_summary: keepGood ? "regeneration hit the time budget; previous brief kept" : "time budget; will resume" }); return { weekKey: w.weekKey, status: "resume-later" }; }
           try {
             const { system, user } = summaryPrompt(part.map((id) => ({ id, title: meta.get(id).title, abstract: meta.get(id).abstract })), canary, d.name);
             const r = await callJson({ purpose: "summarise", system, user, schema: SummaryBatch, budget, maxOutputTokens: 12000 });
@@ -253,12 +258,12 @@ export async function runWeekly(now = new Date(), opts: { dryRun?: boolean; inge
       ],
     };
     if (opts.dryRun) return { weekKey: w.weekKey, status: "dry-run", note: JSON.stringify({ words: brief.word_count, filled, calls: budget.used }), calls: budget.used };
-    if (filled === 0) { await release(w.weekKey, { status: "failed", ladder_level: 2, error_summary: "no domain produced a verified card", calls_used: budget.used }); return { weekKey: w.weekKey, status: "failed-no-content" }; }
+    if (filled === 0) { await release(w.weekKey, keepGood ? { status: "published", error_summary: "regeneration produced no verified card; previous brief kept" } : { status: "failed", ladder_level: 2, error_summary: "no domain produced a verified card", calls_used: budget.used }); return { weekKey: w.weekKey, status: "failed-no-content" }; }
 
     await publish(brief, kept.map((k) => ({ ...k.item, rank: 0 })), w, budget.used);
     return { weekKey: w.weekKey, status: "published", calls: budget.used };
   } catch (e: any) {
-    if (!opts.dryRun) await release(w.weekKey, { status: "failed", error_summary: String(e.message ?? e).slice(0, 400) });
+    if (!opts.dryRun) await release(w.weekKey, { status: endStatus("failed"), error_summary: (keepGood ? "regeneration failed, previous brief kept: " : "") + String(e.message ?? e).slice(0, 380) });
     throw e;
   }
 }
