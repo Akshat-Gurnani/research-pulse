@@ -32,5 +32,8 @@ Weekly AI-research brief for a consultant (8-10 domains, Monday delivery, under 
 ## Known unverified (check before trusting)
 Gemini model IDs and free-tier quotas; whether Hobby accepts two cron entries; whether Flash-Lite counts as "Gemini Flash"; arXiv API visibility lag after Sunday 20:00 ET; Neon free-tier cold start / compute suspend latency. See section 11 of the report.
 
+## Deploying
+`scripts/deploy-prod.sh` (not bare `vercel deploy --prod`): with a GitHub `origin` set, Vercel Hobby BLOCKS the deploy as "Not authorized" because the repo owner is not connected to the Vercel account. The script removes the remote for the upload and restores it.
+
 ## Before the user says "done"
 Run typecheck + tests + build, then follow the "Verify" checklist in `docs/BUILD_PLAN.md`.
